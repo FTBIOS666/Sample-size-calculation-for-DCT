@@ -1,0 +1,499 @@
+
+```{r}
+rm(list = ls())
+library("BSDA")
+library(ggplot2)
+library("ggpubr")
+```
+
+
+
+#Single one-stage function
+```{r}
+single_one_stage=function(sigma1, sigma2, tau, theta,  mu_t, mu_c,pi, c1, c2,
+                   r, alpha, beta,  test, nsim, seed_number){
+  
+  z_a=qnorm(1-alpha)
+  #z_a
+  z_b=qnorm(1-beta)
+  #z_b
+  
+  n = 4*(((tau^2)*(z_a+z_b)^2)/theta^2)
+  n1=(1/(r+1))*n
+  n2=(r/(r+1))*n
+  n1=2*ceiling(n1/2)
+  n2=2*ceiling(n2/2)
+  
+  
+  cost_val=n1*c1+n2*c2
+  n_val=n1+n2
+  
+  sig_vec=c()
+  
+  set.seed(seed_number)
+  for (i in 1:nsim) {
+    #------------------------------------
+    #generate the data:
+    
+    #onsite group
+    Y1=rnorm(n=n1/2, mean = mu_t, sd=sigma1)
+    X1=rnorm(n=n1/2, mean = mu_c, sd=sigma1)
+    
+    #decentralized group
+    Y2=rnorm(n=n2/2, mean = mu_c+theta*(1+pi), sd=sigma2)
+    X2=rnorm(n=n2/2, mean = mu_c, sd=sigma2)
+    
+    #------------------------------------
+    
+    Y=c(Y1,Y2)
+    X=c(X1,X2)
+
+    if(test=="z_score"){
+      
+      res = z.test(Y, X,  alternative = "greater", mu=0, 
+                   sigma.x=sd(Y), sigma.y=sd(X), conf.level=alpha)
+      
+      sig_vec[i]= ifelse(res$p.value<=alpha, 1, 0)
+      
+
+      
+      
+    }else if(test=="t_score"){
+      
+      res = t.test(Y, X,  alternative = "greater", var.equal=TRUE, conf.level=alpha)
+      
+      sig_vec[i]= ifelse(res$p.value<=alpha, 1, 0)
+      
+      
+    }
+    
+  }
+  
+  sig_val=mean(sig_vec[!is.na(sig_vec)])
+  
+  final_result=list(n1=n1,
+                    n2=n2,
+                    n=n_val,
+                    cost=cost_val,
+                    sig_val=sig_val,
+                    sig_vec=sig_vec
+  )
+  
+  return(final_result)
+}
+
+```
+
+
+
+#Hybrid one-stage function
+```{r}
+hybrid_one_stage=function(sigma1, sigma2, tau1,tau2, theta,  mu_t, mu_c, pi, c1,c2,
+                          r, lambda,alpha, beta,  test, nsim, seed_number){
+  
+  #------------------------------------
+  z_a=qnorm(1-alpha)
+  #z_a
+  z_b=qnorm(1-beta)
+  #z_b
+  
+  k=(tau2/tau1)^2
+  
+
+  n1=(4*(tau1^2)*((z_a+z_b)^2))/((theta^2)*(1+ (((1+pi)^2)*r/(k) ) ))
+  
+  #n1
+  n2=r*n1
+  #n2
+  n1=2*ceiling(n1/2)
+  n2=2*ceiling(n2/2)
+  
+  cost_val=n1*c1+n2*c2
+  n_val=n1+n2
+  
+  #-------------------------------
+  
+  sig_vec=c()
+  
+  set.seed(seed_number)
+  
+  for (i in 1:nsim){
+    #------------------------------------
+    #generate the data:
+    
+    #onsite group
+    Y1=rnorm(n=n1/2, mean = mu_t, sd=sigma1)
+    X1=rnorm(n=n1/2, mean = mu_c, sd=sigma1)
+    
+    #decentralized group
+    Y2=rnorm(n=n2/2, mean = mu_c+theta*(1+pi), sd=sigma2)
+    X2=rnorm(n=n2/2, mean = mu_c, sd=sigma2)
+    
+    #------------------------------------
+    
+    sp1=sqrt(((n1/2-1)*(sd(Y1)^2) + (n1/2-1)*(sd(X1)^2))/(n1-2))
+    sp2=sqrt(((n2/2-1)*(sd(Y2)^2) + (n2/2-1)*(sd(X2)^2))/(n2-2))
+    
+    sp1=sigma1
+    sp2=sigma2
+    
+    if(test=="z_score"){
+      
+      w1=sqrt(n1)/sp1
+      w2=(1+pi)*sqrt(n2)/sp2
+      
+      z_stat = ( w1*qnorm(pnorm(mean(Y1-X1)*sqrt(n1)/(2*sp1))) + 
+                   w2*qnorm(pnorm(mean(Y2-X2)*sqrt(n2)/(2*sp2))))/(sqrt(w1^2 + w2^2))
+  
+      #used to be sigma1 and sigma2
+    }else if(test=="t_score"){
+      
+      w1=sqrt(n1)/sp1
+      w2=sqrt(n2)/sp2
+      
+      z_stat = ( w1*qnorm(pt(q=mean(Y1-X1)*sqrt(n1)/(2*sp1), df=n1-2)) + 
+                   w2*qnorm(pt(q=mean(Y2-X2)*sqrt(n2)/(2*sp2), df=n2-2)))/(sqrt(w1^2 + w2^2))
+
+    }
+    
+    #----------------------------------------------------------
+    sig_vec[i]=ifelse(z_stat>=z_a,1,0)
+    
+    #end of nsim  
+  }
+  
+  sig_val=mean(sig_vec[!is.na(sig_vec)])
+  
+  final_result=list(n1=n1,
+                    n2=n2,
+                    n=n_val,
+                    cost=cost_val,
+                    sig_val=sig_val,
+                    sig_vec=sig_vec
+  )
+  
+  return(final_result)
+  
+  
+}
+```
+
+
+
+
+
+
+#pi=0
+```{r}
+#cardio 3
+n0_vec1=c()
+n1_vec1=c()
+
+sig_vec01=c()
+sig_vec11=c()
+
+ind=seq(5,12, by=1)
+for (i in ind) {
+  res0=hybrid_one_stage(sigma1=5, sigma2=i, tau1=5,tau2=i, theta=3,  mu_t=18, mu_c=15,pi=0, c1=1200, c2=300,
+                        r=3, alpha=0.025, beta=0.2, test="z_score", nsim=100000, seed_number=1234567)
+  
+  res1=single_one_stage(sigma1=5, sigma2=i, tau=5, theta=3,  mu_t=18, mu_c=15, pi=0,
+                        c1=1200, c2=300,
+                        r=3, alpha=0.025, beta=0.2,  test="z_score", 
+                        nsim=10000, seed_number=1234567)
+  
+
+  n0_vec1=c(n0_vec1,res0$n)
+  n1_vec1=c(n1_vec1,res1$n)
+
+  sig_vec01=c(sig_vec01,res0$sig_val)
+  sig_vec11=c(sig_vec11,res1$sig_val)
+
+  
+}
+
+```
+
+#pi=-0.2
+```{r}
+#cardio 3
+n0_vec2=c()
+n1_vec2=c()
+
+sig_vec02=c()
+sig_vec12=c()
+
+ind=seq(5,12, by=1)
+for (i in ind) {
+  res0=hybrid_one_stage(sigma1=5, sigma2=i, tau1=5,tau2=i, theta=3,  mu_t=18, mu_c=15,pi=-0.2, c1=1200, c2=300,
+                        r=3, alpha=0.025, beta=0.2, test="z_score", nsim=100000, seed_number=1234567)
+  
+  res1=single_one_stage(sigma1=5, sigma2=i, tau=5, theta=3,  mu_t=18, mu_c=15, pi=-0.2,
+                        c1=1200, c2=300,
+                        r=3, alpha=0.025, beta=0.2,  test="z_score", 
+                        nsim=10000, seed_number=1234567)
+  
+
+  n0_vec2=c(n0_vec2,res0$n)
+  n1_vec2=c(n1_vec2,res1$n)
+
+  sig_vec02=c(sig_vec02,res0$sig_val)
+  sig_vec12=c(sig_vec12,res1$sig_val)
+
+  
+}
+
+```
+
+
+
+
+
+#sample size 1
+```{r}
+val=c(n0_vec1, n1_vec1)  #, sig_vec*100, sig_vec1*100
+#sig_vec0=rep(0.8,length(ind))
+#val=round(c(sig_vec0,sig_vec1)*100,0)
+nam=rep(c("Proposed method", "Standard method"), each=length(ind))
+index=(rep(ind,2)/5)^2
+dat=data.frame(value=val, quantity=nam, DCT_sd=index)
+dat$quantity=factor(dat$quantity, ordered = TRUE, levels=c("Proposed method", "Standard method"))
+
+
+f1 = ggplot(dat, aes(x=DCT_sd, y=value, group=quantity, color=quantity))+
+  geom_line(linewidth=0.8)+
+  geom_point(size=2.5)+
+  #geom_hline(yintercept=24, linetype='dotted')+
+  #ylim(10,35)+  ##Power or  
+  ylim(50,300)+
+  xlim(1,max(index))+
+  labs(y = "Sample size", x = expression("Variance inflation factor " * k))+
+  ggtitle(expression(pi == 0))+
+  #labs(y= "Sample size", x = "Variance inflation factor k")+
+  scale_color_manual(values=c("#FC8D62", "#8DA0CB"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  geom_text(data = subset(dat, quantity == "Proposed method"), 
+            aes(label = value), vjust = -1, color= "black")+
+  theme(plot.title = element_text(hjust=0, face = "bold", size=20),
+        legend.title=element_blank(),
+        legend.position="top",
+        legend.justification = "right",
+        legend.text = element_text(colour="black", size=15),
+        legend.key.size = unit(0.8, 'cm'),
+        axis.title.x = element_text(color = "black", size = 15),
+        axis.title.y = element_text(color = "black", size = 15),
+        axis.text.x = element_text(size=15), 
+        axis.text.y = element_text(size=15), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))+
+       annotate("text", label = "88",x = 3.24, y = 100, size = 4, 
+                 colour = "black")
+
+f1
+
+pdf("sample_size2.pdf",width=8, height = 4)
+f1
+dev.off()
+```
+
+
+
+
+#power 1
+```{r}
+#val=c(n0_vec, n1_vec)  #, sig_vec*100, sig_vec1*100
+#sig_vec0=rep(0.8,length(ind))
+val=round(c(sig_vec01,sig_vec11)*100,0)
+nam=rep(c("Proposed method", "Standard method"), each=length(ind))
+index=(rep(ind,2)/5)^2
+dat=data.frame(value=val, quantity=nam, DCT_sd=index)
+dat$quantity=factor(dat$quantity, ordered = TRUE, levels=c("Proposed method", "Standard method"))
+
+
+f2 = ggplot(dat, aes(x=DCT_sd, y=value, group=quantity, color=quantity))+
+  geom_line(linewidth=0.8)+
+  geom_point(size=2.5)+
+  #geom_hline(yintercept=80, linetype='dotted')+
+  #ylim(10,35)+  ##Power or  
+  xlim(1,max(index))+
+  ylim(20,100)+
+  labs(y = "Power", x = expression("Variance inflation factor " * k))+
+  ggtitle(expression(pi ==0))+
+  #labs(y= "Power", x = "Variance inflation factor k")+
+  scale_color_manual(values=c("#FC8D62", "#8DA0CB"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  theme(plot.title = element_text(hjust=0, face = "bold", size=20),
+        legend.title=element_blank(),
+        legend.position="top",
+        legend.justification = "right",
+        legend.text = element_text(colour="black", size=15),
+        legend.key.size = unit(0.8, 'cm'),
+        axis.title.x = element_text(color = "black", size = 15),
+        axis.title.y = element_text(color = "black", size = 15),
+        axis.text.x = element_text(size=15), 
+        axis.text.y = element_text(size=15), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))
+
+f2
+
+pdf("power2.pdf",width=8, height = 4)
+f2
+dev.off()
+```
+
+
+
+
+
+
+
+#sample size 2
+```{r}
+val=c(n0_vec2, n1_vec2)  #, sig_vec*100, sig_vec1*100
+#sig_vec0=rep(0.8,length(ind))
+#val=round(c(sig_vec0,sig_vec1)*100,0)
+nam=rep(c("Proposed method", "Standard method"), each=length(ind))
+index=(rep(ind,2)/5)^2
+dat=data.frame(value=val, quantity=nam, DCT_sd=index)
+dat$quantity=factor(dat$quantity, ordered = TRUE, levels=c("Proposed method", "Standard method"))
+
+
+f3 = ggplot(dat, aes(x=DCT_sd, y=value, group=quantity, color=quantity))+
+  geom_line(linewidth=0.8)+
+  geom_point(size=2.5)+
+  #geom_hline(yintercept=24, linetype='dotted')+
+  #ylim(10,35)+  ##Power or 
+  xlim(1,max(index))+
+  ylim(50,300)+
+  #xlim(1,2.5)+
+  labs(y = "Sample size", x = expression("Variance inflation factor " * k))+
+  ggtitle(expression(pi == -0.2))+
+  #labs(y= "Sample size", x = "Variance inflation factor k")+
+  scale_color_manual(values=c("#FC8D62", "#8DA0CB"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  geom_text(data = subset(dat, quantity == "Proposed method"), 
+            aes(label = value), vjust = -1, color= "black")+
+  theme(plot.title = element_text(hjust=0, face = "bold", size=20),
+        legend.title=element_blank(),
+        legend.position="top",
+        legend.justification = "right",
+        legend.text = element_text(colour="black", size=15),
+        legend.key.size = unit(0.8, 'cm'),
+        axis.title.x = element_text(color = "black", size = 15),
+        axis.title.y = element_text(color = "black", size = 15),
+        axis.text.x = element_text(size=15), 
+        axis.text.y = element_text(size=15), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))+
+       annotate("text", label = "88",x = 3.24, y = 100, size = 4, 
+                 colour = "black")
+
+
+f3
+
+pdf("sample_size2.pdf",width=8, height = 4)
+f3
+dev.off()
+```
+
+
+
+
+#power 2
+```{r}
+#val=c(n0_vec, n1_vec)  #, sig_vec*100, sig_vec1*100
+#sig_vec0=rep(0.8,length(ind))
+val=round(c(sig_vec02,sig_vec12)*100,0)
+nam=rep(c("Proposed method", "Standard method"), each=length(ind))
+index=(rep(ind,2)/5)^2
+dat=data.frame(value=val, quantity=nam, DCT_sd=index)
+dat$quantity=factor(dat$quantity, ordered = TRUE, levels=c("Proposed method", "Standard method"))
+
+
+f4 = ggplot(dat, aes(x=DCT_sd, y=value, group=quantity, color=quantity))+
+  geom_line(linewidth=0.8)+
+  geom_point(size=2.5)+
+  #geom_hline(yintercept=80, linetype='dotted')+
+  #ylim(10,35)+  ##Power or 
+  xlim(1,max(index))+
+  ylim(20,100)+
+  labs(y= "Power", x = expression("Variance inflation factor " * k))+
+  ggtitle(expression(pi == -0.2))+
+  scale_color_manual(values=c("#FC8D62", "#8DA0CB"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  theme(plot.title = element_text(hjust=0, face = "bold", size=20),
+        legend.title=element_blank(),
+        legend.position="top",
+        legend.justification = "right",
+        legend.text = element_text(colour="black", size=15),
+        legend.key.size = unit(0.8, 'cm'),
+        axis.title.x = element_text(color = "black", size = 15),
+        axis.title.y = element_text(color = "black", size = 15),
+        axis.text.x = element_text(size=15), 
+        axis.text.y = element_text(size=15), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))
+
+
+f4
+
+pdf("power2.pdf",width=8, height = 4)
+f4
+dev.off()
+```
+
+
+
+
+
+
+
+
+
+
+# combined table case 2:
+```{r}
+
+pdf("case1.pdf",width=8, height = 8)
+ggarrange(f1,f2, f3,f4,ncol = 2, nrow = 2,labels = c("A", "B", "C", "D"))
+dev.off()
+
+ggsave(
+  "Feng_Tian_Figure_4_sample_size_and_power_for_case1.png",
+  plot = last_plot(),
+  device = "png",  #tiff
+  scale = 1,
+  width = 12,
+  height = 9,
+  #units = c("in", "cm", "mm", "px"),
+  dpi = 1500,
+  #limitsize = TRUE,
+  #bg = NULL,
+)
+
+```
+
+
+
+

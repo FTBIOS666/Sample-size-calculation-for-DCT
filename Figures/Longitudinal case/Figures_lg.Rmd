@@ -1,0 +1,765 @@
+
+```{r}
+#rm(list = ls())
+library("BSDA")
+library(ggplot2)
+library("ggpubr")
+library(data.table)
+```
+
+
+
+#Hybrid one-stage function
+```{r}
+lg_hybrid_one_stage=function(sigma1, sigma2, tau1, tau2,
+                          theta,  mu_t, mu_c, pi,k,
+                          c1, c2,
+                          r, lambda, rho1, rho2, n_s,
+                          alpha, beta,  
+                          test, nsim, seed_number){
+  
+  #rho1=rho2=0.1
+  #------------------------------------
+  z_a=qnorm(1-alpha)
+  #z_a
+  z_b=qnorm(1-beta)
+  #z_b
+  
+  v=lambda+1/lambda+2
+  nu1 = sqrt((n_s-1)*rho1+1)
+  nu2 = sqrt((n_s-1)*rho2+1)
+  del= 1+ ((1+pi)^2)*r/(k)
+
+  
+  n1_cluster =  (((tau1^2)*((z_a+z_b)^2)*v)/(theta^2))*( nu1^2/(del*n_s)) 
+  n2_cluster=n1_cluster*r
+  
+  n_val=ceiling(n1_cluster+n2_cluster)
+
+  final_result=list(
+          n=n_val
+  )
+  
+  return(final_result)
+  
+  
+}
+
+
+
+
+```
+
+#k=1.5, pi=0
+
+```{r}
+#lower back pain rho=0.3
+n1_vec=c()
+n2_vec=c()
+n3_vec=c()
+n4_vec=c()
+n5_vec=c()
+n6_vec=c()
+n7_vec=c()
+n8_vec=c()
+n9_vec=c()
+n10_vec=c()
+n11_vec=c()
+n12_vec=c()
+n13_vec=c()
+n14_vec=c()
+n15_vec=c()
+ind=seq(0.3,0.7, by=0.1)
+for (i in ind) {
+  res1=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=1.5,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res2=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=1.5,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res3=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=1.5,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  
+  #----------------------------------------------------------
+  
+  res4=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=1.5,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res5=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=1.5,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res6=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=1.5,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  
+  res7=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=1.5,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res8=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=1.5,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res9=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=1.5,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+
+  n1_vec=c(n1_vec,res1$n)
+  n2_vec=c(n2_vec,res2$n)
+  n3_vec=c(n3_vec,res3$n)
+  n4_vec=c(n4_vec,res4$n)
+  n5_vec=c(n5_vec,res5$n)
+  n6_vec=c(n6_vec,res6$n)
+  n7_vec=c(n7_vec,res7$n)
+  n8_vec=c(n8_vec,res8$n)
+  n9_vec=c(n9_vec,res9$n)
+
+  
+}
+
+N_vec_lg = c(n1_vec, n2_vec, n3_vec, n4_vec, n5_vec, n6_vec, n7_vec, n8_vec, n9_vec)
+
+```
+
+
+```{r}
+
+library(dplyr)
+
+val = N_vec_lg
+efs = rep(seq(0.3,0.7,0.1),9)
+ra = rep(rep(c("r=1", "r=2", "r=3"), each=5), 3)
+rho_vec=rep(c("ICC=0.3","ICC=0.5","ICC=0.7"), each=15)
+
+dat=data.frame(value=val, quantity=efs, ratio=ra, ICC=rho_vec)
+dat=dat%>% arrange(quantity,ratio)
+dat$quantity=as.character(dat$quantity)
+dat$ratio=as.character(dat$ratio)
+dat$combined = paste0(dat$ratio," and " ,dat$ICC)
+
+f1 = ggplot(dat, aes(x=quantity, y=value, group=combined, color=ratio))+
+  geom_line(size=0.65,aes(y=jitter(value), linetype=ratio))+
+  geom_point(size=1.5)+
+  labs(y= "Sample size", x =  expression("Effect size "*theta) )+
+  ggtitle(expression("k" * "=1.5, " * pi == 0))+#ggtitle("k=1.2")+
+  scale_linetype_manual(values =c("dotdash", "longdash", "solid")) +
+  scale_color_manual(values=c("#999999","#E69F00", "steelblue"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  theme( plot.title = element_text(hjust=0, face = "bold", size=18),
+       legend.title=element_blank(),
+        legend.position = c(.64, .8),
+        legend.direction="horizontal",
+        #legend.justification = c("right", "top"),
+        legend.text = element_text(colour="black", size=18),
+        legend.key.size = unit(1.6, 'cm'),
+        legend.key=element_rect(fill="white"),
+        axis.title.x = element_text(color = "black", size = 20),
+        axis.title.y = element_text(color = "black", size = 20),
+        axis.text.x = element_text(size=18), 
+        axis.text.y = element_text(size=18), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))+
+        annotate("text", label = "ICC=0.1",x = 0.7, y = 120, size = 4.5, 
+                 colour = "black",fontface = "bold")+
+        annotate("text", label = "ICC=0.5",x = 0.7, y = 250, size = 4.5, 
+                 colour = "black",fontface = "bold")+
+        annotate("text", label = "ICC=0.9",x = 0.7, y = 400, size = 4.5, 
+                 colour = "black",fontface = "bold")
+
+
+f1
+
+pdf("lg_sample_size.pdf",width=8, height = 4)
+f1
+dev.off()
+
+
+dat=dat %>% arrange(ICC, quantity, ratio)
+
+```
+
+
+#k=3, pi=0
+
+
+```{r}
+#lower back pain rho=0.3
+n1_vec=c()
+n2_vec=c()
+n3_vec=c()
+n4_vec=c()
+n5_vec=c()
+n6_vec=c()
+n7_vec=c()
+n8_vec=c()
+n9_vec=c()
+n10_vec=c()
+n11_vec=c()
+n12_vec=c()
+n13_vec=c()
+n14_vec=c()
+n15_vec=c()
+ind=seq(0.3,0.7, by=0.1)
+for (i in ind) {
+  res1=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=3,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res2=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=3,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res3=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=3,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  
+  #----------------------------------------------------------
+  
+  res4=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=3,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res5=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=3,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res6=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=3,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  
+  res7=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=3,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res8=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=3,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res9=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=0, k=3,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+
+  n1_vec=c(n1_vec,res1$n)
+  n2_vec=c(n2_vec,res2$n)
+  n3_vec=c(n3_vec,res3$n)
+  n4_vec=c(n4_vec,res4$n)
+  n5_vec=c(n5_vec,res5$n)
+  n6_vec=c(n6_vec,res6$n)
+  n7_vec=c(n7_vec,res7$n)
+  n8_vec=c(n8_vec,res8$n)
+  n9_vec=c(n9_vec,res9$n)
+
+  
+}
+
+N_vec_lg_add = c(n1_vec, n2_vec, n3_vec, n4_vec, n5_vec, n6_vec, n7_vec, n8_vec, n9_vec)
+
+```
+
+
+```{r}
+
+library(dplyr)
+
+val = N_vec_lg_add
+efs = rep(seq(0.3,0.7,0.1),9)
+ra = rep(rep(c("r=1", "r=2", "r=3"), each=5), 3)
+rho_vec=rep(c("ICC=0.3","ICC=0.5","ICC=0.7"), each=15)
+
+dat=data.frame(value=val, quantity=efs, ratio=ra, ICC=rho_vec)
+dat=dat%>% arrange(quantity,ratio)
+dat$quantity=as.character(dat$quantity)
+dat$ratio=as.character(dat$ratio)
+dat$combined = paste0(dat$ratio," and " ,dat$ICC)
+
+f2 = ggplot(dat, aes(x=quantity, y=value, group=combined, color=ratio))+
+   geom_line(size=0.65,aes(y=jitter(value), linetype=ratio))+
+  geom_point(size=1.5)+
+  #coord_cartesian(xlim = c(-0.05, 10)) +
+  labs(y= "Sample size", x =  expression("Effect size "*theta) )+
+  ggtitle(expression("k" * "=3, " * pi == 0))+#ggtitle("k=1.8")+
+  scale_linetype_manual(values =c("dotdash", "longdash", "solid")) +
+  scale_color_manual(values=c("#999999","#E69F00", "steelblue"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  theme( plot.title = element_text(hjust=0, face = "bold", size=18),
+       legend.title=element_blank(),
+        legend.position = c(.64, .8),
+        legend.direction="horizontal",
+        #legend.justification = c("right", "top"),
+        legend.text = element_text(colour="black", size=18),
+        legend.key.size = unit(1.6, 'cm'),
+        legend.key=element_rect(fill="white"),
+        axis.title.x = element_text(color = "black", size = 20),
+        axis.title.y = element_text(color = "black", size = 20),
+        axis.text.x = element_text(size=18), 
+        axis.text.y = element_text(size=18), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))+
+        annotate("text", label = "ICC=0.1",x = 0.7, y = 200, size = 4.5, 
+                 colour = "black",fontface = "bold")+
+        annotate("text", label = "ICC=0.5",x = 0.7, y = 400, size = 4.5, 
+                 colour = "black",fontface = "bold")+
+        annotate("text", label = "ICC=0.9",x = 0.7, y = 600, size = 4.5, 
+                 colour = "black",fontface = "bold")
+
+
+f2
+
+pdf("lg_sample_size_add.pdf",width=8, height = 4)
+f2
+dev.off()
+
+
+
+```
+
+#k=1.5, pi=-0.2
+
+```{r}
+#lower back pain rho=0.3
+n1_vec=c()
+n2_vec=c()
+n3_vec=c()
+n4_vec=c()
+n5_vec=c()
+n6_vec=c()
+n7_vec=c()
+n8_vec=c()
+n9_vec=c()
+n10_vec=c()
+n11_vec=c()
+n12_vec=c()
+n13_vec=c()
+n14_vec=c()
+n15_vec=c()
+ind=seq(0.3,0.7, by=0.1)
+for (i in ind) {
+  res1=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=1.5,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res2=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=1.5,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res3=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=1.5,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  
+  #----------------------------------------------------------
+  
+  res4=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=1.5,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res5=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=1.5,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res6=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=1.5,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  
+  res7=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=1.5,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res8=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=1.5,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res9=lg_hybrid_one_stage(sigma1=20, sigma2=24, tau1=20, tau2=24,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=1.5,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+
+  n1_vec=c(n1_vec,res1$n)
+  n2_vec=c(n2_vec,res2$n)
+  n3_vec=c(n3_vec,res3$n)
+  n4_vec=c(n4_vec,res4$n)
+  n5_vec=c(n5_vec,res5$n)
+  n6_vec=c(n6_vec,res6$n)
+  n7_vec=c(n7_vec,res7$n)
+  n8_vec=c(n8_vec,res8$n)
+  n9_vec=c(n9_vec,res9$n)
+
+  
+}
+
+N_vec_lg = c(n1_vec, n2_vec, n3_vec, n4_vec, n5_vec, n6_vec, n7_vec, n8_vec, n9_vec)
+
+```
+
+
+```{r}
+
+library(dplyr)
+
+val = N_vec_lg
+efs = rep(seq(0.3,0.7,0.1),9)
+ra = rep(rep(c("r=1", "r=2", "r=3"), each=5), 3)
+rho_vec=rep(c("ICC=0.3","ICC=0.5","ICC=0.7"), each=15)
+
+dat=data.frame(value=val, quantity=efs, ratio=ra, ICC=rho_vec)
+dat=dat%>% arrange(quantity,ratio)
+dat$quantity=as.character(dat$quantity)
+dat$ratio=as.character(dat$ratio)
+dat$combined = paste0(dat$ratio," and " ,dat$ICC)
+
+f3= ggplot(dat, aes(x=quantity, y=value, group=combined, color=ratio))+
+  geom_line(size=0.65,aes(y=jitter(value), linetype=ratio))+
+  geom_point(size=1.5)+
+  labs(y= "Sample size", x =  expression("Effect size "*theta) )+
+  ggtitle(expression("k" * "=1.5, " * pi == -0.2))+#ggtitle("k=1.2")+
+  scale_linetype_manual(values =c("dotdash", "longdash", "solid")) +
+  scale_color_manual(values=c("#999999","#E69F00", "steelblue"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  theme( plot.title = element_text(hjust=0, face = "bold", size=18),
+       legend.title=element_blank(),
+        legend.position = c(.64, .8),
+        legend.direction="horizontal",
+        #legend.justification = c("right", "top"),
+        legend.text = element_text(colour="black", size=18),
+        legend.key.size = unit(1.6, 'cm'),
+        legend.key=element_rect(fill="white"),
+        axis.title.x = element_text(color = "black", size = 20),
+        axis.title.y = element_text(color = "black", size = 20),
+        axis.text.x = element_text(size=18), 
+        axis.text.y = element_text(size=18), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))+
+        annotate("text", label = "ICC=0.1",x = 0.7, y = 150, size = 4.5, 
+                 colour = "black",fontface = "bold")+
+        annotate("text", label = "ICC=0.5",x = 0.7, y = 350, size = 4.5, 
+                 colour = "black",fontface = "bold")+
+        annotate("text", label = "ICC=0.9",x = 0.7, y = 500, size = 4.5, 
+                 colour = "black",fontface = "bold")
+
+
+f3
+
+pdf("lg_sample_size.pdf",width=8, height = 4)
+f3
+dev.off()
+
+
+dat=dat %>% arrange(ICC, quantity, ratio)
+
+```
+
+
+#k=3, pi=-0.2
+
+
+```{r}
+#lower back pain rho=0.3
+n1_vec=c()
+n2_vec=c()
+n3_vec=c()
+n4_vec=c()
+n5_vec=c()
+n6_vec=c()
+n7_vec=c()
+n8_vec=c()
+n9_vec=c()
+n10_vec=c()
+n11_vec=c()
+n12_vec=c()
+n13_vec=c()
+n14_vec=c()
+n15_vec=c()
+ind=seq(0.3,0.7, by=0.1)
+for (i in ind) {
+  res1=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=3,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res2=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=3,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res3=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=3,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.1, rho2=0.1, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  
+  #----------------------------------------------------------
+  
+  res4=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=3,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res5=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=3,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res6=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=3,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.5, rho2=0.5, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  
+  res7=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=3,
+                         c1=1200, c2=300,
+                         r=1, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res8=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=3,
+                         c1=1200, c2=300,
+                         r=2, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+  res9=lg_hybrid_one_stage(sigma1=20, sigma2=36, tau1=20, tau2=36,
+                         theta=20*i,  mu_t=30, mu_c=20, pi=-0.2, k=3,
+                         c1=1200, c2=300,
+                         r=3, lambda=1, rho1=0.9, rho2=0.9, n_s=5,
+                         alpha=0.025, beta=0.2,  
+                         test="z_score", nsim=1, seed_number=13487)
+  
+
+  n1_vec=c(n1_vec,res1$n)
+  n2_vec=c(n2_vec,res2$n)
+  n3_vec=c(n3_vec,res3$n)
+  n4_vec=c(n4_vec,res4$n)
+  n5_vec=c(n5_vec,res5$n)
+  n6_vec=c(n6_vec,res6$n)
+  n7_vec=c(n7_vec,res7$n)
+  n8_vec=c(n8_vec,res8$n)
+  n9_vec=c(n9_vec,res9$n)
+
+  
+}
+
+N_vec_lg_add = c(n1_vec, n2_vec, n3_vec, n4_vec, n5_vec, n6_vec, n7_vec, n8_vec, n9_vec)
+
+```
+
+
+```{r}
+
+library(dplyr)
+
+val = N_vec_lg_add
+efs = rep(seq(0.3,0.7,0.1),9)
+ra = rep(rep(c("r=1", "r=2", "r=3"), each=5), 3)
+rho_vec=rep(c("ICC=0.3","ICC=0.5","ICC=0.7"), each=15)
+
+dat=data.frame(value=val, quantity=efs, ratio=ra, ICC=rho_vec)
+dat=dat%>% arrange(quantity,ratio)
+dat$quantity=as.character(dat$quantity)
+dat$ratio=as.character(dat$ratio)
+dat$combined = paste0(dat$ratio," and " ,dat$ICC)
+
+f4 = ggplot(dat, aes(x=quantity, y=value, group=combined, color=ratio))+
+   geom_line(size=0.65,aes(y=jitter(value), linetype=ratio))+
+  geom_point(size=1.5)+
+  #coord_cartesian(xlim = c(-0.05, 10)) +
+  labs(y= "Sample size", x =  expression("Effect size "*theta) )+
+  ggtitle(expression("k" * "=3, " * pi == -0.2))+#ggtitle("k=1.8")+
+  scale_linetype_manual(values =c("dotdash", "longdash", "solid")) +
+  scale_color_manual(values=c("#999999","#E69F00", "steelblue"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  theme( plot.title = element_text(hjust=0, face = "bold", size=18),
+       legend.title=element_blank(),
+        legend.position = c(.64, .8),
+        legend.direction="horizontal",
+        #legend.justification = c("right", "top"),
+        legend.text = element_text(colour="black", size=18),
+        legend.key.size = unit(1.6, 'cm'),
+        legend.key=element_rect(fill="white"),
+        axis.title.x = element_text(color = "black", size = 20),
+        axis.title.y = element_text(color = "black", size = 20),
+        axis.text.x = element_text(size=18), 
+        axis.text.y = element_text(size=18), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))+
+        annotate("text", label = "ICC=0.1",x = 0.7, y = 220, size = 4.5, 
+                 colour = "black",fontface = "bold")+
+        annotate("text", label = "ICC=0.5",x = 0.7, y = 420, size = 4.5, 
+                 colour = "black",fontface = "bold")+
+        annotate("text", label = "ICC=0.9",x = 0.7, y = 620, size = 4.5, 
+                 colour = "black",fontface = "bold")
+
+
+f4
+
+pdf("lg_sample_size_add.pdf",width=8, height = 4)
+f4
+dev.off()
+
+
+
+```
+
+```{r}
+pdf("lg_sample_size_combined.pdf",width=16, height = 5)
+ggarrange(f1,f2,f3,f4, ncol = 2, nrow = 2,labels = c("A", "B", "C", "D"))
+dev.off()
+
+ggsave(
+  "Feng_Tian_Figure_3_sample_size_change2.pdf",
+  plot = last_plot(),
+  device = "pdf",  #tiff
+  scale = 1,
+  width = 16,
+  height = 5,
+  #units = c("in", "cm", "mm", "px"),
+  dpi = 1500,
+  #limitsize = TRUE,
+  #bg = NULL,
+)
+
+ggsave(
+  "Feng_Tian_Figure_3_sample_size_change2.png",
+  plot = last_plot(),
+  device = "png",  #tiff
+  scale = 1,
+  width = 16,
+  height = 12,
+  #units = c("in", "cm", "mm", "px"),
+  dpi = 1500,
+  #limitsize = TRUE,
+  #bg = NULL,
+)
+
+
+```
+
+
+
+

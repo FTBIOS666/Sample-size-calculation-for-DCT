@@ -1,0 +1,612 @@
+
+```{r}
+rm(list = ls())
+library("BSDA")
+library(ggplot2)
+library("ggpubr")
+library(data.table)
+```
+
+
+
+#Single one-stage function
+```{r}
+single_one_stage=function(sigma1, sigma2, tau, 
+                          theta,  mu_t, mu_c, pi,
+                          c1, c2,
+                          r, lambda, rho1, rho2, n_s,
+                          alpha, beta,  
+                          test, nsim, seed_number){
+  
+  z_a=qnorm(1-alpha)
+  #z_a
+  z_b=qnorm(1-beta)
+  #z_b
+  
+  n_cluster =((lambda+1/lambda+2)*((tau^2)*(z_a+z_b)^2)*(1+ (n_s-1)*rho1))/(n_s*(theta^2))
+  n1_cluster=(1/(r+1))*n_cluster
+  n2_cluster=(r/(r+1))*n_cluster
+  n1_cluster_t = ceiling(n1_cluster * (lambda/(1+lambda)))
+  n1_cluster_c = ceiling(n1_cluster * (1/(1+lambda)))
+  n2_cluster_t = ceiling(n2_cluster * (lambda/(1+lambda)))
+  n2_cluster_c = ceiling(n2_cluster * (1/(1+lambda)))
+  n1=(n1_cluster_t+n1_cluster_c)*n_s
+  n2=(n2_cluster_t+n2_cluster_c)*n_s
+  
+  cost_val=n1*c1+n2*c2
+  n_val=n1+n2
+  
+  sig_vec=c()
+  
+  set.seed(seed_number)
+  
+  for (ii in 1:nsim) {
+    #------------------------------------
+    #generate the data:
+    
+    #onsite group
+    Y1=c()
+    sigma_a1=sqrt(rho1*(sigma1^2))
+    sigma_e1=sqrt((1-rho1)*(sigma1^2))
+    for (i in 1:n1_cluster_t) {
+      va = rnorm(n=1, mean=0, sd=sigma_a1)
+      Y1_sub = va + rnorm(n=n_s, mean=mu_t, sd=sigma_e1)
+      Y1=c(Y1, Y1_sub)
+    }
+    
+    #mean(Y1)
+      
+    X1=c()
+    sigma_a1=sqrt(rho1*(sigma1^2))
+    sigma_e1=sqrt((1-rho1)*(sigma1^2))
+    for (i in 1:n1_cluster_c) {
+      va = rnorm(n=1, mean=0, sd=sigma_a1)
+      X1_sub = va + rnorm(n=n_s, mean=mu_c, sd=sigma_e1)
+      X1=c(X1, X1_sub)
+    }
+
+    #decentralized group
+    Y2=c()
+    sigma_a2=sqrt(rho2*(sigma2^2))
+    sigma_e2=sqrt((1-rho2)*(sigma2^2))
+    for (i in 1:n2_cluster_t) {
+      va = rnorm(n=1, mean=0, sd=sigma_a2)
+      Y2_sub = va + rnorm(n=n_s, mean=mu_c+theta*(1+pi), sd=sigma_e2)
+      Y2=c(Y2, Y2_sub)
+    }
+      
+    X2=c()
+    sigma_a2=sqrt(rho2*(sigma2^2))
+    sigma_e2=sqrt((1-rho2)*(sigma2^2))
+    for (i in 1:n2_cluster_c) {
+      va = rnorm(n=1, mean=0, sd=sigma_a2)
+      X2_sub = va + rnorm(n=n_s, mean=mu_c, sd=sigma_e2)
+      X2=c(X2, X2_sub)
+    }
+    
+  
+    #--------------------------------
+    
+    Y=c(Y1,Y2)
+    X=c(X1,X2)
+
+    if(test=="z_score"){
+      
+      #data.dt = data.table(outcome = c(Y,X), cluster=rep(seq(1:(length(c(Y,X))/n_s)), each=n_s))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho1_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho1_hat =rho1
+      
+      V_t = var(Y) * ((n_s-1)*rho1_hat + 1) * (1/length(Y))   
+      V_c = var(X) * ((n_s-1)*rho1_hat + 1) * (1/length(X)) 
+      
+      V_theta = ((n_s-1)*rho1_hat + 1) * ( var(Y)/length(Y) + var(X)/length(X) )
+      
+      z_stat = (mean(Y)-mean(X))/sqrt(V_t+V_c)
+      
+      sig_vec[ii]= ifelse(z_stat>=z_a, 1, 0)
+      
+      
+    }else if(test=="t_score"){
+      
+      #res = t.test(Y, X,  alternative = "greater", var.equal=TRUE, conf.level=alpha)
+      
+      #sig_vec[i]= ifelse(res$p.value<=alpha, 1, 0)
+      
+      
+    }
+    
+  }
+  
+  sig_val=mean(sig_vec[!is.na(sig_vec)])
+  
+  final_result=list(n1=n1,
+                    n2=n2,
+                    n=n_val,
+                    cost=cost_val,
+                    sig_val=sig_val,
+                    sig_vec=sig_vec
+  )
+  
+  return(final_result)
+}
+
+
+
+```
+
+
+#Hybrid one-stage function
+```{r}
+hybrid_one_stage=function(sigma1, sigma2, tau1, tau2,
+                          theta,  mu_t, mu_c, pi,
+                          c1, c2,
+                          r, lambda, rho1, rho2, n_s,
+                          alpha, beta,  
+                          test, nsim, seed_number){
+  
+  #------------------------------------
+  z_a=qnorm(1-alpha)
+  #z_a
+  z_b=qnorm(1-beta)
+  #z_b
+  
+  k=(tau2/tau1)^2
+  v=lambda+1/lambda+2
+  nu1 = sqrt((n_s-1)*rho1+1)
+  nu2 = sqrt((n_s-1)*rho2+1)
+  del= 1+ ((1+pi)^2)*r/(k)
+
+  n1_cluster = (((tau1^2)*((z_a+z_b)^2)*v)/(theta^2))*( nu1^2/(del*n_s)) 
+
+  n2_cluster=n1_cluster*r
+  n1_cluster_t = ceiling(n1_cluster * (lambda/(1+lambda)))
+  n1_cluster_c = ceiling(n1_cluster * (1/(1+lambda)))
+  n2_cluster_t = ceiling(n2_cluster * (lambda/(1+lambda)))
+  n2_cluster_c = ceiling(n2_cluster * (1/(1+lambda)))
+  n1=(n1_cluster_t+n1_cluster_c)*n_s
+  n2=(n2_cluster_t+n2_cluster_c)*n_s
+  
+  cost_val=n1*c1+n2*c2
+  n_val=n1+n2
+  
+  #-------------------------------
+  
+  sig_vec=c()
+  
+  set.seed(seed_number)
+  
+  for (ii in 1:nsim){
+      #------------------------------------
+    #generate the data:
+    
+    #onsite group
+    Y1=c()
+    sigma_a1=sqrt(rho1*(sigma1^2))
+    sigma_e1=sqrt((1-rho1)*(sigma1^2))
+    for (i in 1:n1_cluster_t) {
+      va = rnorm(n=1, mean=0, sd=sigma_a1)
+      Y1_sub = va + rnorm(n=n_s, mean=mu_t, sd=sigma_e1)
+      Y1=c(Y1, Y1_sub)
+    }
+    
+    #mean(Y1)
+      
+    X1=c()
+    sigma_a1=sqrt(rho1*(sigma1^2))
+    sigma_e1=sqrt((1-rho1)*(sigma1^2))
+    for (i in 1:n1_cluster_c) {
+      va = rnorm(n=1, mean=0, sd=sigma_a1)
+      X1_sub = va + rnorm(n=n_s, mean=mu_c, sd=sigma_e1)
+      X1=c(X1, X1_sub)
+    }
+
+    #decentralized group
+    Y2=c()
+    sigma_a2=sqrt(rho2*(sigma2^2))
+    sigma_e2=sqrt((1-rho2)*(sigma2^2))
+    for (i in 1:n2_cluster_t) {
+      va = rnorm(n=1, mean=0, sd=sigma_a2)
+      Y2_sub = va + rnorm(n=n_s, mean=mu_c+theta*(1+pi), sd=sigma_e2)
+      Y2=c(Y2, Y2_sub)
+    }
+      
+    X2=c()
+    sigma_a2=sqrt(rho2*(sigma2^2))
+    sigma_e2=sqrt((1-rho2)*(sigma2^2))
+    for (i in 1:n2_cluster_c) {
+      va = rnorm(n=1, mean=0, sd=sigma_a2)
+      X2_sub = va + rnorm(n=n_s, mean=mu_c, sd=sigma_e2)
+      X2=c(X2, X2_sub)
+    }
+    
+  
+    #--------------------------------
+    
+    Y=c(Y1,Y2)
+    X=c(X1,X2)
+
+    if(test=="z_score"){
+      
+      #data.dt = data.table(outcome = c(Y1,X1), cluster=rep(seq(1:(length(c(Y1,X1))/n_s)), each=n_s))
+      ##data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho1_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho1_hat =rho1
+      
+      
+      #data.dt = data.table(outcome = c(Y2,X2), cluster=rep(seq(1:(length(c(Y2,X2))/n_s)), each=n_s))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho2_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho2_hat =rho2
+      
+      sp1=sqrt(((n1* (lambda/(1+lambda))-1)*(sd(Y1)^2) + (n1*(1/(1+lambda))-1)*(sd(X1)^2))/(n1-2))
+      sp2=sqrt(((n2*(lambda/(1+lambda))-1)*(sd(Y2)^2) + (n2*(1/(1+lambda))-1)*(sd(X2)^2))/(n2-2))
+      sp1=sigma1
+      sp2=sigma2
+      k_hat=(sp2/sp1)^2
+      
+      
+      
+      w1=sqrt(n1)/(sp1*sqrt((n_s-1)*rho1_hat+1))
+      w2=(1+pi)*sqrt(n2)/(sp2*sqrt((n_s-1)*rho2_hat+1))
+      
+      
+      t1= (mean(Y1)-mean(X1))/ (sp1*sqrt(v/n1)*sqrt((n_s-1)*rho1_hat+1))
+      t2= (mean(Y2)-mean(X2))/ (sp2*sqrt(v/n2)*sqrt((n_s-1)*rho2_hat+1)) 
+      
+     
+      z_stat = (w1*t1 + w2*t2)/sqrt(w1^2 + w2^2)
+      
+      sig_vec[ii]= ifelse(z_stat>=z_a, 1, 0)
+      
+      
+    }else if(test=="t_score"){
+      
+      #res = t.test(Y, X,  alternative = "greater", var.equal=TRUE, conf.level=alpha)
+      
+      #sig_vec[i]= ifelse(res$p.value<=alpha, 1, 0)
+      
+      
+    }
+  }
+  
+  sig_val=mean(sig_vec[!is.na(sig_vec)])
+  
+  final_result=list(n1=n1,
+                    n2=n2,
+                    n=n_val,
+                    cost=cost_val,
+                    sig_val=sig_val,
+                    sig_vec=sig_vec
+  )
+  
+  return(final_result)
+  
+  
+}
+
+```
+
+
+
+
+
+#pi=1
+
+```{r}
+#lower back pain 3
+n0_vec1=c()
+n1_vec1=c()
+sig_vec01=c()
+sig_vec11=c()
+ind=seq(20,50, by=5)
+for (i in ind) {
+  res0=hybrid_one_stage(sigma1=20, sigma2=i, tau1=20, tau2=i,
+                        theta=10,  mu_t=30, mu_c=20, pi=0,
+                        c1=1200, c2=300,
+                        r=3, lambda=1, rho1=0.5, rho2=0.5, n_s=10,
+                        alpha=0.025, beta=0.2,  
+                        test="z_score", nsim=5000, seed_number=13487)
+  
+  res1=single_one_stage(sigma1=20, sigma2=i, tau=20, 
+                        theta=10,  mu_t=30, mu_c=20, pi=0,
+                        c1=1200, c2=300,
+                        r=3, lambda=1, rho1=0.5, rho2=0.5, n_s=10,
+                        alpha=0.025, beta=0.2,  
+                        test="z_score", nsim=5000, seed_number=13487)
+  
+
+  
+  n0_vec1=c(n0_vec1,res0$n)
+  n1_vec1=c(n1_vec1,res1$n)
+
+  
+  sig_vec01=c(sig_vec01,res0$sig_val)
+  sig_vec11=c(sig_vec11,res1$sig_val)
+
+  
+}
+
+
+save(n0_vec1,n1_vec1,sig_vec01,sig_vec11, file="lg_data_0.5_1.RData")
+
+```
+
+
+
+#pi=0.8
+
+```{r}
+#lower back pain 3
+n0_vec2=c()
+n1_vec2=c()
+sig_vec02=c()
+sig_vec12=c()
+ind=seq(20,50, by=5)
+for (i in ind) {
+  res0=hybrid_one_stage(sigma1=20, sigma2=i, tau1=20, tau2=i,
+                        theta=10,  mu_t=30, mu_c=20, pi=-0.2,
+                        c1=1200, c2=300,
+                        r=3, lambda=1, rho1=0.5, rho2=0.5, n_s=10,
+                        alpha=0.025, beta=0.2,  
+                        test="z_score", nsim=5000, seed_number=13487)
+  
+  res1=single_one_stage(sigma1=20, sigma2=i, tau=20, 
+                        theta=10,  mu_t=30, mu_c=20, pi=-0.2,
+                        c1=1200, c2=300,
+                        r=3, lambda=1, rho1=0.5, rho2=0.5, n_s=10,
+                        alpha=0.025, beta=0.2,  
+                        test="z_score", nsim=5000, seed_number=13487)
+  
+
+  
+  n0_vec2=c(n0_vec2,res0$n)
+  n1_vec2=c(n1_vec2,res1$n)
+
+  
+  sig_vec02=c(sig_vec02,res0$sig_val)
+  sig_vec12=c(sig_vec12,res1$sig_val)
+
+  
+}
+
+
+save(n0_vec2,n1_vec2,sig_vec02,sig_vec12, file="lg_data_0.5_2.RData")
+
+```
+
+
+
+
+
+
+
+
+#sample size 1
+```{r}
+val=c(n0_vec1, n1_vec1)/10  #, sig_vec*100, sig_vec1*100
+#sig_vec0=rep(0.8,length(ind))
+#val=round(c(sig_vec0,sig_vec1)*100,0)
+nam=rep(c("Proposed method", "Standard method"), each=length(ind))
+index=(rep(ind,2)/20)^2
+dat=data.frame(value=val, quantity=nam, DCT_sd=index)
+dat$quantity=factor(dat$quantity, ordered = TRUE, levels=c("Proposed method", "Standard method"))
+
+
+f1 = ggplot(dat, aes(x=DCT_sd, y=value, group=quantity, color=quantity))+
+  geom_line(linewidth=0.8)+
+  geom_point(size=2.5)+
+  #geom_hline(yintercept=24, linetype='dotted')+
+  #ylim(10,35)+  ##Power or  
+  ylim(20,260)+
+  xlim(1,max(index))+
+  labs(y= "Sample size", x = expression("Variance inflation factor " * k))+
+  ggtitle(expression(pi == 0))+
+  scale_color_manual(values=c("#FC8D62", "#8DA0CB"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  geom_text(data = subset(dat, quantity == "Proposed method"), 
+            aes(label = value), vjust = -1, color= "black")+
+  theme(plot.title = element_text(hjust=0, face = "bold", size=20),
+        legend.title=element_blank(),
+        legend.position="top",
+        legend.justification = "right",
+        legend.text = element_text(colour="black", size=15),
+        legend.key.size = unit(0.8, 'cm'),
+        axis.title.x = element_text(color = "black", size = 15),
+        axis.title.y = element_text(color = "black", size = 15),
+        axis.text.x = element_text(size=15), 
+        axis.text.y = element_text(size=15), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))+
+       annotate("text", label = "70",x = 3.75, y = 88, size = 4, 
+                 colour = "black")
+
+
+f1
+
+
+
+
+
+```
+
+
+
+
+#power 1
+```{r}
+#val=c(n0_vec, n1_vec)  #, sig_vec*100, sig_vec1*100
+#sig_vec0=rep(0.8,length(ind))
+val=ceiling(c(sig_vec01,sig_vec11)*100)
+nam=rep(c("Proposed method", "Standard method"), each=length(ind))
+index=(rep(ind,2)/20)^2
+dat=data.frame(value=val, quantity=nam, DCT_sd=index)
+dat$quantity=factor(dat$quantity, ordered = TRUE, levels=c("Proposed method", "Standard method"))
+
+
+f2 = ggplot(dat, aes(x=DCT_sd, y=value, group=quantity, color=quantity))+
+  geom_line(linewidth=0.8)+
+  geom_point(size=2.5)+
+  #geom_hline(yintercept=80, linetype='dotted')+
+  #ylim(10,35)+  ##Power or  
+  ylim(0,100)+
+  scale_y_continuous(breaks = c(20, 40, 60, 80), limits = c(0, 100)) + 
+  labs(y= "Power", x = expression("Variance inflation factor " * k))+
+  ggtitle(expression(pi == 0))+
+  scale_color_manual(values=c("#FC8D62", "#8DA0CB"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  theme(plot.title = element_text(hjust=0, face = "bold", size=20),
+        legend.title=element_blank(),
+        legend.position="top",
+        legend.justification = "right",
+        legend.text = element_text(colour="black", size=15),
+        legend.key.size = unit(0.8, 'cm'),
+        axis.title.x = element_text(color = "black", size = 15),
+        axis.title.y = element_text(color = "black", size = 15),
+        axis.text.x = element_text(size=15), 
+        axis.text.y = element_text(size=15), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))
+
+
+f2
+
+```
+
+
+#sample size 2
+```{r}
+val=c(n0_vec2, n1_vec2)/10  #, sig_vec*100, sig_vec1*100
+#sig_vec0=rep(0.8,length(ind))
+#val=round(c(sig_vec0,sig_vec1)*100,0)
+nam=rep(c("Proposed method", "Standard method"), each=length(ind))
+index=(rep(ind,2)/20)^2
+dat=data.frame(value=val, quantity=nam, DCT_sd=index)
+dat$quantity=factor(dat$quantity, ordered = TRUE, levels=c("Proposed method", "Standard method"))
+
+
+f3 = ggplot(dat, aes(x=DCT_sd, y=value, group=quantity, color=quantity))+
+  geom_line(linewidth=0.8)+
+  geom_point(size=2.5)+
+  #geom_hline(yintercept=24, linetype='dotted')+
+  #ylim(10,35)+  ##Power or  
+  ylim(20,260)+
+  xlim(1,max(index))+
+  #xlim(1,2.5)+
+  labs(y= "Sample size", x = expression("Variance inflation factor " * k))+
+  ggtitle(expression(pi == -0.2))+
+  scale_color_manual(values=c("#FC8D62", "#8DA0CB"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  geom_text(data = subset(dat, quantity == "Proposed method"), 
+            aes(label = value), vjust = -1, color= "black")+
+  theme(plot.title = element_text(hjust=0, face = "bold", size=20),
+        legend.title=element_blank(),
+        legend.position="top",
+        legend.justification = "right",
+        legend.text = element_text(colour="black", size=15),
+        legend.key.size = unit(0.8, 'cm'),
+        axis.title.x = element_text(color = "black", size = 15),
+        axis.title.y = element_text(color = "black", size = 15),
+        axis.text.x = element_text(size=15), 
+        axis.text.y = element_text(size=15), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))+
+       annotate("text", label = "70",x = 3.75, y = 88, size = 4, 
+                 colour = "black")
+
+
+f3
+
+
+
+
+
+```
+
+
+#power 2
+```{r}
+#val=c(n0_vec, n1_vec)  #, sig_vec*100, sig_vec1*100
+#sig_vec0=rep(0.8,length(ind))
+val=ceiling(c(sig_vec02,sig_vec12)*100)
+nam=rep(c("Proposed method", "Standard method"), each=length(ind))
+index=(rep(ind,2)/20)^2
+dat=data.frame(value=val, quantity=nam, DCT_sd=index)
+dat$quantity=factor(dat$quantity, ordered = TRUE, levels=c("Proposed method", "Standard method"))
+
+
+f4 = ggplot(dat, aes(x=DCT_sd, y=value, group=quantity, color=quantity))+
+  geom_line(linewidth=0.8)+
+  geom_point(size=2.5)+
+  #geom_hline(yintercept=80, linetype='dotted')+
+  #ylim(10,35)+  ##Power or  
+  ylim(0,100)+
+  scale_y_continuous(breaks = c(20, 40, 60, 80), limits = c(0, 100)) + 
+  labs(y= "Power", x = expression("Variance inflation factor " * k))+
+  ggtitle(expression(pi == -0.2))+
+  scale_color_manual(values=c("#FC8D62", "#8DA0CB"))+  #, "#8DA0CB", "#E78AC3"
+  #scale_shape_manual(values=c(0,2))+
+  theme(plot.title = element_text(hjust=0, face = "bold", size=20),
+        legend.title=element_blank(),
+        legend.position="top",
+        legend.justification = "right",
+        legend.text = element_text(colour="black", size=15),
+        legend.key.size = unit(0.8, 'cm'),
+        axis.title.x = element_text(color = "black", size = 15),
+        axis.title.y = element_text(color = "black", size = 15),
+        axis.text.x = element_text(size=15), 
+        axis.text.y = element_text(size=15), 
+        # Hide panel borders and remove grid lines
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        # Change axis line
+        axis.line = element_line(colour = "black"),
+        panel.background =   element_rect(fill = "white", colour = NA))
+
+
+f4
+```
+
+
+
+
+# combined table case1:
+```{r}
+
+pdf("case1_lg.pdf",width=8, height = 8)
+ggarrange(f1,f2, f3,f4,ncol = 2, nrow = 2,labels = c("A", "B", "C", "D"))
+dev.off()
+
+ggsave(
+  "Feng_Tian_Figure_5_sample_size_and_power_for_case2.png",
+  plot = last_plot(),
+  device = "png",  #tiff
+  scale = 1,
+  width = 12,
+  height = 8,
+  #units = c("in", "cm", "mm", "px"),
+  dpi = 1500,
+  #limitsize = TRUE,
+  #bg = NULL,
+)
+
+```
