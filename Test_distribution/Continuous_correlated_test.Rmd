@@ -1,0 +1,645 @@
+
+```{r}
+rm(list = ls())
+library("BSDA")
+library(ggplot2)
+library("ggpubr")
+library(data.table)
+```
+
+
+#Hybrid one-stage function
+```{r}
+
+#hypo="null"; 
+#sigma1=5;sigma1_e=5; sigma2=10; sigma2_e=10;
+#tau1=5;tau1_e=5;tau2=10; tau2_e=10;
+#theta=5; pi_IF=0; mu_t=20; mu_c=15;
+#r=3; lambda=1; 
+#rho1=0.5; rho2=0.5; n_s1=5; n_s2=5;
+#alpha=0.025; beta=0.2; 
+#direction=1; var_type=1;
+#nsim=10000; seed_number=1234567
+
+
+hybrid_one_stage=function(hypo, 
+                          sigma1, sigma1_e, sigma2, sigma2_e,
+                          tau1,tau1_e, tau2, tau2_e,
+                          theta, pi_IF, mu_t, mu_c,
+                          r, lambda, 
+                          rho1, rho2, n_s1, n_s2,
+                          alpha, beta, direction, var_type,  
+                          nsim, seed_number){
+  
+  v=lambda+1/lambda+2
+  
+  if(direction==1 & var_type==1) {
+    
+    z_a=qnorm(1-alpha)
+    #z_a
+    z_b=qnorm(1-beta)
+    #z_b
+    
+    k=(tau2/tau1)^2
+    v=lambda+1/lambda+2
+    nu1 = sqrt((n_s1-1)*rho1+1)
+    nu2 = sqrt((n_s2-1)*rho2+1)
+    del= ((1+pi_IF)^2)*r/(k)
+    
+    
+    
+    n1_cluster=(((tau1^2)*((z_a+z_b)^2)*v)/(theta^2)) * ( 1/(((n_s1/(nu1^2)) + (del*n_s2/(nu2^2)))) )
+    n2_cluster=n1_cluster*r
+    n1_cluster_t = ceiling(n1_cluster * (lambda/(1+lambda)))
+    n1_cluster_c = ceiling(n1_cluster * (1/(1+lambda)))
+    n2_cluster_t = ceiling(n2_cluster * (lambda/(1+lambda)))
+    n2_cluster_c = ceiling(n2_cluster * (1/(1+lambda)))
+    n1=(n1_cluster_t+n1_cluster_c)
+    n2=(n2_cluster_t+n2_cluster_c)
+    
+    n_val=n1+n2
+
+  }
+  
+  
+  if(direction==2 & var_type==1) {
+    
+    z_a=qnorm(1-alpha/2)
+    #z_a
+    z_b=qnorm(1-beta)
+    #z_b
+    
+    k=(tau2/tau1)^2
+    v=lambda+1/lambda+2
+    nu1 = sqrt((n_s1-1)*rho1+1)
+    nu2 = sqrt((n_s2-1)*rho2+1)
+    del= ((1+pi_IF)^2)*r/(k)
+    
+    
+    n1_cluster=(((tau1^2)*((z_a+z_b)^2)*v)/(theta^2)) * ( 1/(((n_s1/(nu1^2)) + (del*n_s2/(nu2^2)))) )
+    n2_cluster=n1_cluster*r
+    n1_cluster_t = ceiling(n1_cluster * (lambda/(1+lambda)))
+    n1_cluster_c = ceiling(n1_cluster * (1/(1+lambda)))
+    n2_cluster_t = ceiling(n2_cluster * (lambda/(1+lambda)))
+    n2_cluster_c = ceiling(n2_cluster * (1/(1+lambda)))
+    n1=(n1_cluster_t+n1_cluster_c)
+    n2=(n2_cluster_t+n2_cluster_c)
+    
+    n_val=n1+n2
+  }
+  
+  
+  if(direction==1 & var_type==2) {
+    
+    z_a=qnorm(1-alpha)
+    #z_a
+    z_b=qnorm(1-beta)
+    #z_b
+    
+    #adjusted
+    k=(tau2/tau1)^2
+    #k2=tau2_e/tau1_e
+    a1=tau1_e/tau1
+    a2=tau2_e/tau2
+    b=1/(lambda+1)
+    nu1 = sqrt((n_s1-1)*rho1+1)
+    nu2 = sqrt((n_s2-1)*rho2+1)
+    
+    del= ((1+pi_IF)^2)*r/(k)
+
+    parta = n_s1/(   (1+lambda)*(nu1^2) + ((1+lambda)/lambda)*(a1^2)*(nu1^2) )
+    partb= n_s2/(   (1+lambda)*(nu2^2) + ((1+lambda)/lambda)*(a2^2)*(nu2^2) )
+    partc = (((1+pi_IF)^2)*r/k)
+    der=1/(parta + partc*partb)
+    
+    n1_cluster=(((tau1^2)*((z_a+z_b)^2))/(theta^2)) * der 
+    
+    
+    
+    n2_cluster=n1_cluster*r
+    n1_cluster_t = ceiling(n1_cluster * (lambda/(1+lambda)))
+    n1_cluster_c = ceiling(n1_cluster * (1/(1+lambda)))
+    n2_cluster_t = ceiling(n2_cluster * (lambda/(1+lambda)))
+    n2_cluster_c = ceiling(n2_cluster * (1/(1+lambda)))
+    n1=(n1_cluster_t+n1_cluster_c)
+    n2=(n2_cluster_t+n2_cluster_c)
+    
+    n_val=n1+n2
+    
+  }
+  
+  
+  if(direction==2 & var_type==2) {
+    z_a=qnorm(1-alpha/2)
+    #z_a
+    z_b=qnorm(1-beta)
+    #z_b
+    
+    #adjusted
+    k=(tau2/tau1)^2
+    #k2=tau2_e/tau1_e
+    a1=tau1_e/tau1
+    a2=tau2_e/tau2
+    b=1/(lambda+1)
+    nu1 = sqrt((n_s1-1)*rho1+1)
+    nu2 = sqrt((n_s2-1)*rho2+1)
+    
+    del= ((1+pi_IF)^2)*r/(k)
+    
+    parta = n_s1/(   (1+lambda)*(nu1^2) + ((1+lambda)/lambda)*(a1^2)*(nu1^2) )
+    partb= n_s2/(   (1+lambda)*(nu2^2) + ((1+lambda)/lambda)*(a2^2)*(nu2^2) )
+    partc = (((1+pi_IF)^2)*r/k)
+    der=1/(parta + partc*partb)
+    
+    n1_cluster=(((tau1^2)*((z_a+z_b)^2))/(theta^2)) * der
+    
+    n2_cluster=n1_cluster*r
+    n1_cluster_t = ceiling(n1_cluster * (lambda/(1+lambda)))
+    n1_cluster_c = ceiling(n1_cluster * (1/(1+lambda)))
+    n2_cluster_t = ceiling(n2_cluster * (lambda/(1+lambda)))
+    n2_cluster_c = ceiling(n2_cluster * (1/(1+lambda)))
+    n1=(n1_cluster_t+n1_cluster_c)
+    n2=(n2_cluster_t+n2_cluster_c)
+    
+    n_val=n1+n2
+    
+  }
+  
+  #-------------------------------
+  
+  sig_vec=c()
+  z_stat_vec=c()
+  t1_vec=c()
+  t2_vec=c()
+  
+  set.seed(seed_number)
+  
+  for (ii in 1:nsim){
+      #------------------------------------
+    #generate the data:
+    
+    #onsite group
+    Y1=c()
+    sigma_a1=sqrt(rho1*(sigma1_e^2))
+    sigma_e1=sqrt((1-rho1)*(sigma1_e^2))
+    for (i in 1:n1_cluster_t) {
+      va = rnorm(n=1, mean=0, sd=sigma_a1)
+      Y1_sub = va + rnorm(n=n_s1, mean=mu_t, sd=sigma_e1)
+      Y1=c(Y1, Y1_sub)
+    }
+    
+    if(hypo=="null"){
+      Y1=c()
+      sigma_a1=sqrt(rho1*(sigma1_e^2))
+      sigma_e1=sqrt((1-rho1)*(sigma1_e^2))
+      for (i in 1:n1_cluster_t) {
+        va = rnorm(n=1, mean=0, sd=sigma_a1)
+        Y1_sub = va + rnorm(n=n_s1, mean=mu_c, sd=sigma_e1)
+        Y1=c(Y1, Y1_sub)
+      }
+    }
+    
+    #mean(Y1)
+      
+    X1=c()
+    sigma_a1=sqrt(rho1*(sigma1^2))
+    sigma_e1=sqrt((1-rho1)*(sigma1^2))
+    for (i in 1:n1_cluster_c) {
+      va = rnorm(n=1, mean=0, sd=sigma_a1)
+      X1_sub = va + rnorm(n=n_s1, mean=mu_c, sd=sigma_e1)
+      X1=c(X1, X1_sub)
+    }
+
+    #decentralized group
+    Y2=c()
+    sigma_a2=sqrt(rho2*(sigma2_e^2))
+    sigma_e2=sqrt((1-rho2)*(sigma2_e^2))
+    for (i in 1:n2_cluster_t) {
+      va = rnorm(n=1, mean=0, sd=sigma_a2)
+      Y2_sub = va + rnorm(n=n_s2, mean=mu_c+theta*(1+pi_IF), sd=sigma_e2)
+      Y2=c(Y2, Y2_sub)
+    }
+    
+    if(hypo=="null"){
+      Y2=c()
+      sigma_a2=sqrt(rho2*(sigma2_e^2))
+      sigma_e2=sqrt((1-rho2)*(sigma2_e^2))
+      for (i in 1:n2_cluster_t) {
+        va = rnorm(n=1, mean=0, sd=sigma_a2)
+        Y2_sub = va + rnorm(n=n_s2, mean=mu_c, sd=sigma_e2)
+        Y2=c(Y2, Y2_sub)
+      }
+    }
+      
+    X2=c()
+    sigma_a2=sqrt(rho2*(sigma2^2))
+    sigma_e2=sqrt((1-rho2)*(sigma2^2))
+    for (i in 1:n2_cluster_c) {
+      va = rnorm(n=1, mean=0, sd=sigma_a2)
+      X2_sub = va + rnorm(n=n_s2, mean=mu_c, sd=sigma_e2)
+      X2=c(X2, X2_sub)
+    }
+    
+  
+    #--------------------------------
+    
+    Y=c(Y1,Y2)
+    X=c(X1,X2)
+
+
+    if(direction==1 & var_type==1){
+      #data.dt = data.table(outcome = c(Y1,X1), cluster=rep(seq(1:(length(c(Y1,X1))/n_s1)), each=n_s1))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho1_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho1_hat =rho1
+      
+      
+      #data.dt = data.table(outcome = c(Y2,X2), cluster=rep(seq(1:(length(c(Y2,X2))/n_s2)), each=n_s2))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho2_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho2_hat =rho2
+      
+      #sp1=sqrt(((n1* (lambda/(1+lambda))-1)*(sd(Y1)^2) + (n1*(1/(1+lambda))-1)*(sd(X1)^2))/(n1-2))
+      #sp2=sqrt(((n2*(lambda/(1+lambda))-1)*(sd(Y2)^2) + (n2*(1/(1+lambda))-1)*(sd(X2)^2))/(n2-2))
+      #k_hat=(sp2/sp1)^2
+      sp1=sigma1
+      sp2=sigma2
+      
+      
+      w1=sqrt(n1*n_s1)/(sp1*sqrt((n_s1-1)*rho1_hat+1))
+      w2=(1+pi_IF)*sqrt(n2*n_s2)/(sp2*sqrt((n_s2-1)*rho2_hat+1))
+      
+      
+      t1= (mean(Y1)-mean(X1))/ (sp1*sqrt(v/(n1*n_s1) )*sqrt((n_s1-1)*rho1_hat+1))
+      t2= (mean(Y2)-mean(X2))/ (sp2*sqrt(v/(n2*n_s2) )*sqrt((n_s2-1)*rho2_hat+1)) 
+      
+     
+      z_stat = (w1*t1 + w2*t2)/sqrt(w1^2 + w2^2)
+      
+      sig_vec[ii]= ifelse(z_stat>=z_a, 1, 0)
+      z_stat_vec[ii] = z_stat
+      t1_vec[ii] = t1
+      t2_vec[ii] = t2
+      
+    }
+    
+    if(direction==2 & var_type==1){
+      #data.dt = data.table(outcome = c(Y1,X1), cluster=rep(seq(1:(length(c(Y1,X1))/n_s1)), each=n_s1))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho1_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho1_hat =rho1
+      
+      
+      #data.dt = data.table(outcome = c(Y2,X2), cluster=rep(seq(1:(length(c(Y2,X2))/n_s2)), each=n_s2))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho2_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho2_hat =rho2
+      
+      #sp1=sqrt(((n1* (lambda/(1+lambda))-1)*(sd(Y1)^2) + (n1*(1/(1+lambda))-1)*(sd(X1)^2))/(n1-2))
+      #sp2=sqrt(((n2*(lambda/(1+lambda))-1)*(sd(Y2)^2) + (n2*(1/(1+lambda))-1)*(sd(X2)^2))/(n2-2))
+      #k_hat=(sp2/sp1)^2
+      sp1=sigma1
+      sp2=sigma2
+      
+      
+      w1=sqrt(n1*n_s1)/(sp1*sqrt((n_s1-1)*rho1_hat+1))
+      w2=(1+pi_IF)*sqrt(n2*n_s2)/(sp2*sqrt((n_s2-1)*rho2_hat+1))
+      
+      
+      t1= (mean(Y1)-mean(X1))/ (sp1*sqrt(v/(n1*n_s1) )*sqrt((n_s1-1)*rho1_hat+1))
+      t2= (mean(Y2)-mean(X2))/ (sp2*sqrt(v/(n2*n_s2) )*sqrt((n_s2-1)*rho2_hat+1))  
+      
+     
+      z_stat = (w1*t1 + w2*t2)/sqrt(w1^2 + w2^2)
+      
+      sig_vec[ii]= ifelse(abs(z_stat)>=z_a, 1, 0)
+      z_stat_vec[ii] = z_stat
+      t1_vec[ii] = t1
+      t2_vec[ii] = t2
+      
+    }
+    
+    if(direction==1 & var_type==2){
+      
+      #data.dt = data.table(outcome = c(Y1,X1), cluster=rep(seq(1:(length(c(Y1,X1))/n_s1)), each=n_s1))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho1_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho1_hat =rho1
+      
+      
+      #data.dt = data.table(outcome = c(Y2,X2), cluster=rep(seq(1:(length(c(Y2,X2))/n_s2)), each=n_s2))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho2_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho2_hat =rho2
+      
+      #sp1=sqrt(((n1* (lambda/(1+lambda))-1)*(sd(Y1)^2) + (n1*(1/(1+lambda))-1)*(sd(X1)^2))/(n1-2))
+      #sp2=sqrt(((n2*(lambda/(1+lambda))-1)*(sd(Y2)^2) + (n2*(1/(1+lambda))-1)*(sd(X2)^2))/(n2-2))
+      #k_hat=(sp2/sp1)^2
+      sp1=sigma1
+      sp2=sigma2
+      
+      w1=(sqrt(n1*n_s1)/sp1)*(1/sqrt((1+lambda)*(nu1^2) + (1+1/lambda)*(nu1^2)*(a1^2)))
+      w2=((1+pi_IF)*sqrt(n2*n_s2)/sp2)*(1/sqrt((1+lambda)*(nu2^2) + (1+1/lambda)*(nu2^2)*(a2^2)))
+      
+      
+      t1= (mean(Y1)-mean(X1))/(sp1*sqrt((1+lambda)*(nu1^2)/(n1*n_s1) + (1+1/lambda)*(nu1^2)*(a1^2)/(n1*n_s1)))
+      t2= (mean(Y2)-mean(X2))/(sp2*sqrt((1+lambda)*(nu2^2)/(n2*n_s2) + (1+1/lambda)*(nu2^2)*(a2^2)/(n2*n_s2))) 
+      
+     
+      z_stat = (w1*t1 + w2*t2)/sqrt(w1^2 + w2^2)
+      
+      sig_vec[ii]= ifelse(z_stat>=z_a, 1, 0)
+      z_stat_vec[ii] = z_stat
+      t1_vec[ii] = t1
+      t2_vec[ii] = t2
+      
+    }
+    
+    if(direction==2 & var_type==2){
+      
+      #data.dt = data.table(outcome = c(Y1,X1), cluster=rep(seq(1:(length(c(Y1,X1))/n_s1)), each=n_s1))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho1_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho1_hat =rho1
+      
+      
+      #data.dt = data.table(outcome = c(Y2,X2), cluster=rep(seq(1:(length(c(Y2,X2))/n_s2)), each=n_s2))
+      #data.dt[,cluster := factor(cluster)]
+      #summary_aov = summary(aov(outcome ~ cluster,data=data.dt))
+      #rho2_hat =summary_aov[[1]][1,2]/sum(summary_aov[[1]][,2])
+      rho2_hat =rho2
+      
+      #sp1=sqrt(((n1* (lambda/(1+lambda))-1)*(sd(Y1)^2) + (n1*(1/(1+lambda))-1)*(sd(X1)^2))/(n1-2))
+      #sp2=sqrt(((n2*(lambda/(1+lambda))-1)*(sd(Y2)^2) + (n2*(1/(1+lambda))-1)*(sd(X2)^2))/(n2-2))
+      #k_hat=(sp2/sp1)^2
+      sp1=sigma1
+      sp2=sigma2
+      
+      w1=(sqrt(n1*n_s1)/sp1)*(1/sqrt((1+lambda)*(nu1^2) + (1+1/lambda)*(nu1^2)*(a1^2)))
+      w2=((1+pi_IF)*sqrt(n2*n_s2)/sp2)*(1/sqrt((1+lambda)*(nu2^2) + (1+1/lambda)*(nu2^2)*(a2^2)))
+      
+      
+      t1= (mean(Y1)-mean(X1))/(sp1*sqrt((1+lambda)*(nu1^2)/(n1*n_s1) + (1+1/lambda)*(nu1^2)*(a1^2)/(n1*n_s1)))
+      t2= (mean(Y2)-mean(X2))/(sp2*sqrt((1+lambda)*(nu2^2)/(n2*n_s2) + (1+1/lambda)*(nu2^2)*(a2^2)/(n2*n_s2))) 
+      
+     
+      z_stat = (w1*t1 + w2*t2)/sqrt(w1^2 + w2^2)
+      
+      sig_vec[ii]= ifelse(abs(z_stat)>=z_a, 1, 0)
+      z_stat_vec[ii] = z_stat
+      t1_vec[ii] = t1
+      t2_vec[ii] = t2
+    }
+    
+      
+    
+  }
+  
+  sig_val=mean(sig_vec[!is.na(sig_vec)])
+  
+  final_result=list(n1=n1,
+                    n2=n2,
+                    n=n_val,
+                    sig_val=sig_val,
+                    sig_vec=sig_vec,
+                    z_stat_vec=z_stat_vec,
+                    t1_vec=t1_vec,
+                    t2_vec=t2_vec
+  )
+  
+  return(final_result)
+  
+  
+}
+
+```
+
+
+
+
+
+#case 1
+```{r}
+
+T1=Sys.time()
+
+res1=hybrid_one_stage(hypo="null", 
+                      sigma1=5,sigma1_e=5, sigma2=10, sigma2_e=10,
+                      tau1=5,tau1_e=5,tau2=10, tau2_e=10,
+                      theta=5, pi_IF=0, mu_t=20, mu_c=15,
+                      r=3, lambda=1, 
+                      rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                      alpha=0.025, beta=0.2, 
+                      direction=1, var_type=1,
+                      nsim=100000, seed_number=1234567)
+
+
+res1$sig_val
+mean(res1$z_stat_vec)
+sd(res1$z_stat_vec)
+mean(res1$t1_vec)
+sd(res1$t1_vec)
+mean(res1$t2_vec)
+sd(res1$t2_vec)
+
+T2=Sys.time()
+T2-T1
+
+res2=hybrid_one_stage(hypo="alter", 
+                      sigma1=5,sigma1_e=5, sigma2=10, sigma2_e=10,
+                      tau1=5,tau1_e=5,tau2=10, tau2_e=10,
+                      theta=5, pi_IF=0, mu_t=20, mu_c=15,
+                      r=3, lambda=1, 
+                      rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                      alpha=0.025, beta=0.2, 
+                      direction=1, var_type=1,
+                      nsim=100000, seed_number=1234567)
+
+res2$sig_val
+mean(res2$z_stat_vec)
+sd(res2$z_stat_vec)
+mean(res2$t1_vec)
+sd(res2$t1_vec)
+mean(res2$t2_vec)
+sd(res2$t2_vec)
+
+
+```
+
+
+
+
+
+
+
+
+#case 2
+```{r}
+
+T1=Sys.time()
+
+res1=hybrid_one_stage(hypo="null", 
+                      sigma1=5,sigma1_e=5, sigma2=10, sigma2_e=10,
+                      tau1=5,tau1_e=5,tau2=10, tau2_e=10,
+                      theta=5, pi_IF=0.8, mu_t=20, mu_c=15,
+                      r=3, lambda=1, 
+                      rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                      alpha=0.025, beta=0.2, 
+                      direction=1, var_type=1,
+                      nsim=100000, seed_number=1234567)
+
+
+res1$sig_val
+mean(res1$z_stat_vec)
+sd(res1$z_stat_vec)
+mean(res1$t1_vec)
+sd(res1$t1_vec)
+mean(res1$t2_vec)
+sd(res1$t2_vec)
+
+T2=Sys.time()
+T2-T1
+
+res2=hybrid_one_stage(hypo="alter", 
+                      sigma1=5,sigma1_e=5, sigma2=10, sigma2_e=10,
+                      tau1=5,tau1_e=5,tau2=10, tau2_e=10,
+                      theta=5, pi_IF=0.8, mu_t=20, mu_c=15,
+                      r=3, lambda=1, 
+                      rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                      alpha=0.025, beta=0.2, 
+                      direction=1, var_type=1,
+                      nsim=100000, seed_number=1234567)
+
+res2$sig_val
+mean(res2$z_stat_vec)
+sd(res2$z_stat_vec)
+mean(res2$t1_vec)
+sd(res2$t1_vec)
+mean(res2$t2_vec)
+sd(res2$t2_vec)
+
+
+```
+
+
+
+
+
+
+#case 3
+```{r}
+
+T1=Sys.time()
+
+res1=hybrid_one_stage(hypo="null", 
+                      sigma1=5,sigma1_e=10, sigma2=10, sigma2_e=15,
+                      tau1=5,tau1_e=10,tau2=10, tau2_e=15,
+                      theta=5, pi_IF=-0.5, mu_t=20, mu_c=15,
+                      r=3, lambda=1, 
+                      rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                      alpha=0.025, beta=0.2, 
+                      direction=1, var_type=2,
+                      nsim=100000, seed_number=1234567)
+
+
+res1$sig_val
+mean(res1$z_stat_vec)
+sd(res1$z_stat_vec)
+mean(res1$t1_vec)
+sd(res1$t1_vec)
+mean(res1$t2_vec)
+sd(res1$t2_vec)
+
+T2=Sys.time()
+T2-T1
+
+res2=hybrid_one_stage(hypo="alter", 
+                      sigma1=5,sigma1_e=10, sigma2=10, sigma2_e=15,
+                      tau1=5,tau1_e=10,tau2=10, tau2_e=15,
+                      theta=5, pi_IF=-0.5, mu_t=20, mu_c=15,
+                      r=3, lambda=1, 
+                      rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                      alpha=0.025, beta=0.2, 
+                      direction=1, var_type=2,
+                      nsim=100000, seed_number=1234567)
+
+res2$sig_val
+mean(res2$z_stat_vec)
+sd(res2$z_stat_vec)
+mean(res2$t1_vec)
+sd(res2$t1_vec)
+mean(res2$t2_vec)
+sd(res2$t2_vec)
+
+
+```
+
+
+
+#case 4
+```{r}
+
+T1=Sys.time()
+
+res1=hybrid_one_stage(hypo="null", 
+                      sigma1=5,sigma1_e=10, sigma2=10, sigma2_e=15,
+                      tau1=5,tau1_e=10,tau2=10, tau2_e=15,
+                      theta=5, pi_IF=-0.5, mu_t=20, mu_c=15,
+                      r=3, lambda=1, 
+                      rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                      alpha=0.025, beta=0.2, 
+                      direction=2, var_type=2,
+                      nsim=100000, seed_number=1234567)
+
+
+res1$sig_val
+mean(res1$z_stat_vec)
+sd(res1$z_stat_vec)
+mean(res1$t1_vec)
+sd(res1$t1_vec)
+mean(res1$t2_vec)
+sd(res1$t2_vec)
+
+T2=Sys.time()
+T2-T1
+
+res2=hybrid_one_stage(hypo="alter", 
+                      sigma1=5,sigma1_e=10, sigma2=10, sigma2_e=15,
+                      tau1=5,tau1_e=10,tau2=10, tau2_e=15,
+                      theta=5, pi_IF=-0.5, mu_t=20, mu_c=15,
+                      r=3, lambda=1, 
+                      rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                      alpha=0.025, beta=0.2, 
+                      direction=2, var_type=2,
+                      nsim=100000, seed_number=1234567)
+
+res2$sig_val
+mean(res2$z_stat_vec)
+sd(res2$z_stat_vec)
+mean(res2$t1_vec)
+sd(res2$t1_vec)
+mean(res2$t2_vec)
+sd(res2$t2_vec)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

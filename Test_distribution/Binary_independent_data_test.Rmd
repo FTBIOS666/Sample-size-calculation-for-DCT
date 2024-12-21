@@ -1,0 +1,260 @@
+
+```{r}
+rm(list = ls())
+library("BSDA")
+library(ggplot2)
+library("ggpubr")
+```
+
+
+
+
+
+#Hybrid one-stage function
+```{r}
+
+
+#hypo="null";
+#sigma1=5;sigma1_e=5;sigma2=10;sigma2_e=10;
+#tau1=5;tau1_e=5;tau2=10;tau2_e=10;
+#theta=5;pi_IF=0;mu_t=20;mu_c=15;
+#r=3;rho=1;alpha=0.025;beta=0.2;
+#direction=1;var_type=1;
+#nsim=100000;seed_number=123456
+
+hybrid_one_stage=function(hypo, p1, p1_e, p2, p2_e, r, rho,
+                               alpha, beta, direction, var_type, nsim, seed_number){
+  
+
+  theta = p1_e - p1
+  pi_IF = (p2_e-p2)/(p1_e - p1) - 1
+  
+  tau1 = sqrt(p1*(1-p1))
+  tau1_e = sqrt(p1_e*(1-p1_e))
+  tau2 = sqrt(p2*(1-p2))
+  tau2_e = sqrt(p2_e*(1-p2_e))
+  
+  sigma1 = sqrt(p1*(1-p1))
+  sigma1_e = sqrt(p1_e*(1-p1_e))
+  sigma2 = sqrt(p2*(1-p2))
+  sigma2_e = sqrt(p2_e*(1-p2_e))
+  
+  k=(tau2/tau1)^2
+  a1=tau1_e/tau1
+  a2=tau2_e/tau2
+ 
+    
+  if(direction==1 & var_type==2) {
+    #------------------------------------
+    z_a=qnorm(1-alpha)
+    #z_a
+    z_b=qnorm(1-beta)
+    #z_b
+    
+    parta = 1/(1+rho + (a1^2)*((1+rho)/rho) )
+    partb= 1/(1+rho + (a2^2)*((1+rho)/rho) )
+    partc = (((1+pi_IF)^2)*r/k)
+    der=1/(parta + partc*partb)
+  
+    
+    n1=((tau1^2)*((z_a+z_b)^2)/(theta^2))* der
+    #n1
+    n2=r*n1
+    #n2
+    n1_t = ceiling(n1 * (rho/(1+rho)))
+    n1_c = ceiling(n1 * (1/(1+rho)))
+    n2_t = ceiling(n2 * (rho/(1+rho)))
+    n2_c = ceiling(n2 * (1/(1+rho)))
+    
+    
+    n1=(n1_t+n1_c)
+    n2=(n2_t+n2_c)
+    n_val=n1+n2
+  }
+  
+  
+  if(direction==2 & var_type==2) {
+    #------------------------------------
+    z_a=qnorm(1-alpha/2)
+    #z_a
+    z_b=qnorm(1-beta)
+    #z_b
+    
+    parta = 1/(1+rho + (a1^2)*((1+rho)/rho) )
+    partb= 1/(1+rho + (a2^2)*((1+rho)/rho) )
+    partc = (((1+pi_IF)^2)*r/k)
+    der=1/(parta + partc*partb)
+  
+    
+    n1=((tau1^2)*((z_a+z_b)^2)/(theta^2))* der 
+    n2=r*n1
+    
+    n1_t = ceiling(n1 * (rho/(1+rho)))
+    n1_c = ceiling(n1 * (1/(1+rho)))
+    n2_t = ceiling(n2 * (rho/(1+rho)))
+    n2_c = ceiling(n2 * (1/(1+rho)))
+    
+    n1=(n1_t+n1_c)
+    n2=(n2_t+n2_c)
+    
+    n_val=n1+n2
+  }
+
+  #-------------------------------
+  
+  sig_vec=c()
+  z_stat_vec=c()
+  t1_vec=c()
+  t2_vec=c()
+  
+  set.seed(seed_number)
+  
+  for (i in 1:nsim){
+    #------------------------------------
+    #generate the data:
+
+    if(hypo=="null"){
+      
+      #onsite group
+      Y1=rbinom(n=n1_t, size = 1, prob=p1)
+      X1=rbinom(n=n1_c, size = 1, prob=p1)
+      
+      #decentralized group
+      Y2=rbinom(n=n2_t, size = 1, prob=p2)
+      X2=rbinom(n=n2_c, size = 1, prob=p2)
+      
+      p1_e = p1
+      p2_e=p2
+      sigma1 = sqrt(p1*(1-p1))
+      sigma1_e = sqrt(p1_e*(1-p1_e))
+      sigma2 = sqrt(p2*(1-p2))
+      sigma2_e = sqrt(p2_e*(1-p2_e))
+      k=(sigma2/sigma1)^2
+      a1=sigma1_e/sigma1
+      a2=sigma2_e/sigma2
+      
+    }else if(hypo=="alter"){
+      #onsite group
+      Y1=rbinom(n=n1_t, size = 1, prob=p1_e)
+      X1=rbinom(n=n1_c, size = 1, prob=p1)
+      
+      #decentralized group
+      Y2=rbinom(n=n2_t, size = 1, prob=p2_e)
+      X2=rbinom(n=n2_c, size = 1, prob=p2)
+    }
+    
+    #------------------------------------
+    
+    #sp1=sqrt(((n1/2-1)*(sd(Y1)^2) + (n1/2-1)*(sd(X1)^2))/(n1-2))
+    #sp2=sqrt(((n2/2-1)*(sd(Y2)^2) + (n2/2-1)*(sd(X2)^2))/(n2-2))
+  
+    
+    if(direction==1 & var_type==2){
+        
+        #sp1=sigma1
+        #sp2=sigma2
+        
+        t1 = (mean(Y1-X1))*(sqrt(n1))/(sigma1*sqrt(1+rho+ (a1^2)*(1/rho+1)))
+        t2 = (mean(Y2-X2))*(sqrt(n2))/(sigma2*sqrt(1+rho+ (a2^2)*(1/rho+1)))
+          
+        w1=(sqrt(n1)/sigma1)*(1/(sqrt(1+rho+ (a1^2)*(1/rho+1))))
+        w2=((1+pi_IF)*sqrt(n2)/sigma2)*(1/(sqrt(1+rho+ (a2^2)*(1/rho+1))))
+        
+        z_stat = (w1*t1 +  w2*t2)/sqrt(w1^2+w2^2)
+        
+        sig_vec[i]=ifelse(z_stat>=z_a,1,0)
+        z_stat_vec[i] = z_stat
+        t1_vec[i] = t1
+        t2_vec[i] = t2
+    }
+    
+    if(direction==2 & var_type==2){
+    #sp1=sigma1
+        #sp2=sigma2
+        
+        t1 = (mean(Y1-X1))*(sqrt(n1))/(sigma1*sqrt(1+rho+ (a1^2)*(1/rho+1)))
+        t2 = (mean(Y2-X2))*(sqrt(n2))/(sigma2*sqrt(1+rho+ (a2^2)*(1/rho+1)))
+          
+        w1=(sqrt(n1)/sigma1)*(1/(sqrt(1+rho+ (a1^2)*(1/rho+1))))
+        w2=((1+pi_IF)*sqrt(n2)/sigma2)*(1/(sqrt(1+rho+ (a2^2)*(1/rho+1))))
+        
+        z_stat = (w1*t1 +  w2*t2)/sqrt(w1^2+w2^2)
+        
+        sig_vec[i]=ifelse(abs(z_stat)>=z_a,1,0)
+        z_stat_vec[i] = z_stat
+        t1_vec[i] = t1
+        t2_vec[i] = t2
+      #used to be sigma1 and sigma2
+    
+    
+    #----------------------------------------------------------
+    
+    
+    
+      
+    }
+    #end of nsim
+  }
+  
+  sig_val=mean(sig_vec[!is.na(sig_vec)])
+  
+  final_result=list(n1=n1,
+                    n2=n2,
+                    n=n_val,
+                    sig_val=sig_val,
+                    sig_vec=sig_vec,
+                    z_stat_vec=z_stat_vec,
+                    t1_vec=t1_vec,
+                    t2_vec=t2_vec
+  )
+  
+  return(final_result)
+  #------------------------------------
+
+}
+```
+
+
+
+
+
+
+#case 1
+```{r}
+
+
+
+res1=hybrid_one_stage(hypo="null", 
+                      p1=0.2,p1_e=0.4, p2=0.2, p2_e=0.35,
+                      r=3, rho=1, alpha=0.025, beta=0.2, 
+                      direction=2, var_type=2,
+                      nsim=100000, seed_number=123456)
+
+
+res1$sig_val
+mean(res1$z_stat_vec)
+sd(res1$z_stat_vec)
+mean(res1$t1_vec)
+sd(res1$t1_vec)
+mean(res1$t2_vec)
+sd(res1$t2_vec)
+
+
+res2=hybrid_one_stage(hypo="alter", 
+                      p1=0.2,p1_e=0.4, p2=0.2, p2_e=0.35,
+                      r=3, rho=1, alpha=0.025, beta=0.2, 
+                      direction=2, var_type=2,
+                      nsim=100000, seed_number=123456)
+
+res2$sig_val
+mean(res2$z_stat_vec)
+sd(res2$z_stat_vec)
+mean(res2$t1_vec)
+sd(res2$t1_vec)
+mean(res2$t2_vec)
+sd(res2$t2_vec)
+
+
+```
+
+

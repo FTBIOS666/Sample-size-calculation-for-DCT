@@ -1,0 +1,537 @@
+
+```{r}
+rm(list = ls())
+library("BSDA")
+library(ggplot2)
+library("ggpubr")
+library(data.table)
+```
+
+
+#Hybrid one-stage function
+```{r}
+
+#hypo="null"; 
+#p1=0.2;p1_e=0.3;
+#rho=0.5;n_s=5;
+#alpha=0.025; beta=0.2; 
+#direction=1; var_type=2;
+#nsim=10000; seed_number=1234567
+
+
+hybrid_one_stage_hybrid=function(hypo, 
+                                  p1, p1_e, p2, p2_e,
+                                  r, lambda, 
+                                  rho1, rho2, n_s1, n_s2,
+                                  alpha, beta, direction, var_type,  
+                                  nsim, seed_number){
+  
+  theta = p1_e - p1
+  pi_IF = (p2_e-p2)/(p1_e - p1) - 1
+  
+  tau1 = sqrt(p1*(1-p1))
+  tau1_e = sqrt(p1_e*(1-p1_e))
+  tau2 = sqrt(p2*(1-p2))
+  tau2_e = sqrt(p2_e*(1-p2_e))
+  
+  sigma1 = sqrt(p1*(1-p1))
+  sigma1_e = sqrt(p1_e*(1-p1_e))
+  sigma2 = sqrt(p2*(1-p2))
+  sigma2_e = sqrt(p2_e*(1-p2_e))
+  
+  k=(tau2/tau1)^2
+  a1=tau1_e/tau1
+  a2=tau2_e/tau2
+  
+  v=lambda+1/lambda+2
+  
+  
+  if(direction==1 & var_type==2) {
+    
+    z_a=qnorm(1-alpha)
+    #z_a
+    z_b=qnorm(1-beta)
+    #z_b
+    
+    #adjusted
+    k=(tau2/tau1)^2
+    #k2=tau2_e/tau1_e
+    a1=tau1_e/tau1
+    a2=tau2_e/tau2
+    b=1/(lambda+1)
+    nu1 = sqrt((n_s1-1)*rho1+1)
+    nu2 = sqrt((n_s2-1)*rho2+1)
+    
+    del= ((1+pi_IF)^2)*r/(k)
+
+    parta = n_s1/(   (1+lambda)*(nu1^2) + ((1+lambda)/lambda)*(a1^2)*(nu1^2) )
+    partb= n_s2/(   (1+lambda)*(nu2^2) + ((1+lambda)/lambda)*(a2^2)*(nu2^2) )
+    partc = (((1+pi_IF)^2)*r/k)
+    der=1/(parta + partc*partb)
+    
+    n1_cluster=(((tau1^2)*((z_a+z_b)^2))/(theta^2)) * der 
+    
+    
+    
+    n2_cluster=n1_cluster*r
+    n1_cluster_t = ceiling(n1_cluster * (lambda/(1+lambda)))
+    n1_cluster_c = ceiling(n1_cluster * (1/(1+lambda)))
+    n2_cluster_t = ceiling(n2_cluster * (lambda/(1+lambda)))
+    n2_cluster_c = ceiling(n2_cluster * (1/(1+lambda)))
+    n1=(n1_cluster_t+n1_cluster_c)
+    n2=(n2_cluster_t+n2_cluster_c)
+    
+    n_val=n1+n2
+    
+  }
+  
+  
+  if(direction==2 & var_type==2) {
+    z_a=qnorm(1-alpha/2)
+    #z_a
+    z_b=qnorm(1-beta)
+    #z_b
+    
+    #adjusted
+    k=(tau2/tau1)^2
+    #k2=tau2_e/tau1_e
+    a1=tau1_e/tau1
+    a2=tau2_e/tau2
+    b=1/(lambda+1)
+    nu1 = sqrt((n_s1-1)*rho1+1)
+    nu2 = sqrt((n_s2-1)*rho2+1)
+    
+    del= ((1+pi_IF)^2)*r/(k)
+    
+    parta = n_s1/(   (1+lambda)*(nu1^2) + ((1+lambda)/lambda)*(a1^2)*(nu1^2) )
+    partb= n_s2/(   (1+lambda)*(nu2^2) + ((1+lambda)/lambda)*(a2^2)*(nu2^2) )
+    partc = (((1+pi_IF)^2)*r/k)
+    der=1/(parta + partc*partb)
+    
+    n1_cluster=(((tau1^2)*((z_a+z_b)^2))/(theta^2)) * der
+    
+    n2_cluster=n1_cluster*r
+    n1_cluster_t = ceiling(n1_cluster * (lambda/(1+lambda)))
+    n1_cluster_c = ceiling(n1_cluster * (1/(1+lambda)))
+    n2_cluster_t = ceiling(n2_cluster * (lambda/(1+lambda)))
+    n2_cluster_c = ceiling(n2_cluster * (1/(1+lambda)))
+    n1=(n1_cluster_t+n1_cluster_c)
+    n2=(n2_cluster_t+n2_cluster_c)
+    
+    n_val=n1+n2
+    
+  }
+  #-------------------------------
+  
+  sig_vec=c()
+  z_stat_vec=c()
+  the_vec=c()
+  t1_vec=c()
+  t2_vec=c()
+  
+  set.seed(seed_number)
+  
+  for (ii in 1:nsim){
+    
+    
+    #------------------------------------
+    #generate the data:
+    
+    #Onsite:
+       
+    #Control
+    p1_yes_star = rho1*p1 + (1-rho1)*(p1^n_s1)
+    p1_no_star = rho1*(1-p1) + (1-rho1)*((1-p1)^n_s1)
+    rho1_calc = ( (p1_yes_star+p1_no_star) - (p1^n_s1 + (1-p1)^n_s1) )/(1- (p1^n_s1 + (1-p1)^n_s1) )
+  
+    responses <- expand.grid(rep(list(c(0, 1)), n_s1))
+    
+    colnames(responses) <- paste0("Subject", 1:n_s1)
+
+    # Calculate the probability for each row
+    responses$Probability <- apply(responses, 1, function(row) {
+      prod(ifelse(row == 1, p1, 1 - p1))
+    })
+    
+    # Add a column for the count of 1s in each row
+    responses$Num_Ones <- rowSums(responses == 1)
+    
+    # Summarize probabilities by the number of 1s
+    grouped <- aggregate(Probability ~ Num_Ones, data = responses, sum)
+    #sum(sum(grouped$Probability[2:5])*0.5,p1_yes_star,p1_no_star )
+    grouped$Probability[1] = p1_no_star
+    grouped$Probability[n_s1+1] = p1_yes_star
+    grouped$Probability[2:n_s1] = (1-rho1)*grouped$Probability[2:n_s1]
+    #sum(grouped$Probability)
+    
+    X1=c()
+    X1_mat = rbind(c(0,0,0,0,0),
+                  c(1,0,0,0,0),
+                  c(1,1,0,0,0),
+                  c(1,1,1,0,0),
+                  c(1,1,1,1,0),
+                  c(1,1,1,1,1))
+    
+    for (c in 1:n1_cluster_c) {
+      sampled = sample(1:(n_s1+1), size=1,replace = TRUE, prob = grouped$Probability)
+      X1=c(X1,X1_mat[sampled,])
+    }
+    
+    
+    #---------------------------------------------------
+    
+    #Treatment
+    p1_e_yes_star = rho1*p1_e + (1-rho1)*(p1_e^n_s1)
+    p1_e_no_star = rho1*(1-p1_e) + (1-rho1)*((1-p1_e)^n_s1)
+    rho1_calc = ( (p1_e_yes_star+p1_e_no_star) - (p1_e^n_s1 + (1-p1_e)^n_s1) )/(1- (p1_e^n_s1 + (1-p1_e)^n_s1) )
+  
+    responses <- expand.grid(rep(list(c(0, 1)), n_s1))
+    
+    colnames(responses) <- paste0("Subject", 1:n_s1)
+
+    # Calculate the probability for each row
+    responses$Probability <- apply(responses, 1, function(row) {
+      prod(ifelse(row == 1, p1_e, 1 - p1_e))
+    })
+    
+    # Add a column for the count of 1s in each row
+    responses$Num_Ones <- rowSums(responses == 1)
+    
+    # Summarize probabilities by the number of 1s
+    grouped <- aggregate(Probability ~ Num_Ones, data = responses, sum)
+    #sum(sum(grouped$Probability[2:5])*0.5,p1_e_yes_star,p1_e_no_star )
+    grouped$Probability[1] = p1_e_no_star
+    grouped$Probability[n_s1+1] = p1_e_yes_star
+    grouped$Probability[2:n_s1] = (1-rho1)*grouped$Probability[2:n_s1]
+    #sum(grouped$Probability)
+    
+    Y1=c()
+    Y1_mat = rbind(c(0,0,0,0,0),
+                  c(1,0,0,0,0),
+                  c(1,1,0,0,0),
+                  c(1,1,1,0,0),
+                  c(1,1,1,1,0),
+                  c(1,1,1,1,1))
+    
+    for (c in 1:n1_cluster_t) {
+      sampled = sample(1:(n_s1+1), size=1,replace = TRUE, prob = grouped$Probability)
+      Y1=c(Y1,Y1_mat[sampled,])
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    if(hypo=="null"){
+      
+      p1_e = p1
+      p2_e=p2
+      sigma1 = sqrt(p1*(1-p1))
+      sigma1_e = sqrt(p1_e*(1-p1_e))
+      sigma2 = sqrt(p2*(1-p2))
+      sigma2_e = sqrt(p2_e*(1-p2_e))
+      k=(sigma2/sigma1)^2
+      a1=sigma1_e/sigma1
+      a2=sigma2_e/sigma2
+      
+      
+      #Treatment
+      p1_e=p1
+      p1_e_yes_star = rho1*p1_e + (1-rho1)*(p1_e^n_s1)
+      p1_e_no_star = rho1*(1-p1_e) + (1-rho1)*((1-p1_e)^n_s1)
+      rho1_calc = ( (p1_e_yes_star+p1_e_no_star) - (p1_e^n_s1 + (1-p1_e)^n_s1) )/(1- (p1_e^n_s1 + (1-p1_e)^n_s1)         )
+    
+      responses <- expand.grid(rep(list(c(0, 1)), n_s1))
+      
+      colnames(responses) <- paste0("Subject", 1:n_s1)
+  
+      # Calculate the probability for each row
+      responses$Probability <- apply(responses, 1, function(row) {
+        prod(ifelse(row == 1, p1_e, 1 - p1_e))
+      })
+      
+      # Add a column for the count of 1s in each row
+      responses$Num_Ones <- rowSums(responses == 1)
+      
+      # Summarize probabilities by the number of 1s
+      grouped <- aggregate(Probability ~ Num_Ones, data = responses, sum)
+      #sum(sum(grouped$Probability[2:5])*0.5,p1_e_yes_star,p1_e_no_star )
+      grouped$Probability[1] = p1_e_no_star
+      grouped$Probability[n_s1+1] = p1_e_yes_star
+      grouped$Probability[2:n_s1] = (1-rho1)*grouped$Probability[2:n_s1]
+      #sum(grouped$Probability)
+      
+      Y1=c()
+      Y1_mat = rbind(c(0,0,0,0,0),
+                    c(1,0,0,0,0),
+                    c(1,1,0,0,0),
+                    c(1,1,1,0,0),
+                    c(1,1,1,1,0),
+                    c(1,1,1,1,1))
+      
+      for (c in 1:n1_cluster_t) {
+        sampled = sample(1:(n_s1+1), size=1,replace = TRUE, prob = grouped$Probability)
+        Y1=c(Y1,Y1_mat[sampled,])
+      }
+    
+     
+    }
+    
+    
+    #Offsite:
+    #Control
+    p2_yes_star = rho2*p2 + (1-rho2)*(p2^n_s2)
+    p2_no_star = rho2*(1-p2) + (1-rho2)*((1-p2)^n_s2)
+    rho2_calc = ( (p2_yes_star+p2_no_star) - (p2^n_s2 + (1-p2)^n_s2) )/(1- (p2^n_s2 + (1-p2)^n_s2) )
+  
+    responses <- expand.grid(rep(list(c(0, 1)), n_s2))
+    
+    colnames(responses) <- paste0("Subject", 1:n_s2)
+
+    # Calculate the probability for each row
+    responses$Probability <- apply(responses, 1, function(row) {
+      prod(ifelse(row == 1, p2, 1 - p2))
+    })
+    
+    # Add a column for the count of 1s in each row
+    responses$Num_Ones <- rowSums(responses == 1)
+    
+    # Summarize probabilities by the number of 1s
+    grouped <- aggregate(Probability ~ Num_Ones, data = responses, sum)
+    #sum(sum(grouped$Probability[2:5])*0.5,p2_yes_star,p2_no_star )
+    grouped$Probability[1] = p2_no_star
+    grouped$Probability[n_s2+1] = p2_yes_star
+    grouped$Probability[2:n_s2] = (1-rho2)*grouped$Probability[2:n_s2]
+    #sum(grouped$Probability)
+    
+    X2=c()
+    X2_mat = rbind(c(0,0,0,0,0),
+                  c(1,0,0,0,0),
+                  c(1,1,0,0,0),
+                  c(1,1,1,0,0),
+                  c(1,1,1,1,0),
+                  c(1,1,1,1,1))
+    
+    for (c in 1:n2_cluster_c) {
+      sampled = sample(1:(n_s2+1), size=1,replace = TRUE, prob = grouped$Probability)
+      X2=c(X2,X2_mat[sampled,])
+    }
+    
+    
+    #---------------------------------------------------
+    
+    #Treatment
+    p2_e_yes_star = rho2*p2_e + (1-rho2)*(p2_e^n_s2)
+    p2_e_no_star = rho2*(1-p2_e) + (1-rho2)*((1-p2_e)^n_s2)
+    rho2_calc = ( (p2_e_yes_star+p2_e_no_star) - (p2_e^n_s2 + (1-p2_e)^n_s2) )/(1- (p2_e^n_s2 + (1-p2_e)^n_s2) )
+  
+    responses <- expand.grid(rep(list(c(0, 1)), n_s2))
+    
+    colnames(responses) <- paste0("Subject", 1:n_s2)
+
+    # Calculate the probability for each row
+    responses$Probability <- apply(responses, 1, function(row) {
+      prod(ifelse(row == 1, p2_e, 1 - p2_e))
+    })
+    
+    # Add a column for the count of 1s in each row
+    responses$Num_Ones <- rowSums(responses == 1)
+    
+    # Summarize probabilities by the number of 1s
+    grouped <- aggregate(Probability ~ Num_Ones, data = responses, sum)
+    #sum(sum(grouped$Probability[2:5])*0.5,p2_e_yes_star,p2_e_no_star )
+    grouped$Probability[1] = p2_e_no_star
+    grouped$Probability[n_s2+1] = p2_e_yes_star
+    grouped$Probability[2:n_s2] = (1-rho2)*grouped$Probability[2:n_s2]
+    #sum(grouped$Probability)
+    
+    Y2=c()
+    Y2_mat = rbind(c(0,0,0,0,0),
+                  c(1,0,0,0,0),
+                  c(1,1,0,0,0),
+                  c(1,1,1,0,0),
+                  c(1,1,1,1,0),
+                  c(1,1,1,1,1))
+    
+    for (c in 1:n2_cluster_t) {
+      sampled = sample(1:(n_s2+1), size=1,replace = TRUE, prob = grouped$Probability)
+      Y2=c(Y2,Y2_mat[sampled,])
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    if(hypo=="null"){
+      #Treatment
+      
+      p1_e = p1
+      p2_e=p2
+      sigma1 = sqrt(p1*(1-p1))
+      sigma1_e = sqrt(p1_e*(1-p1_e))
+      sigma2 = sqrt(p2*(1-p2))
+      sigma2_e = sqrt(p2_e*(1-p2_e))
+      k=(sigma2/sigma1)^2
+      a1=sigma1_e/sigma1
+      a2=sigma2_e/sigma2
+      
+      
+      p2_e=p2
+      p2_e_yes_star = rho2*p2_e + (1-rho2)*(p2_e^n_s2)
+      p2_e_no_star = rho2*(1-p2_e) + (1-rho2)*((1-p2_e)^n_s2)
+      rho2_calc = ( (p2_e_yes_star+p2_e_no_star) - (p2_e^n_s2 + (1-p2_e)^n_s2) )/(1- (p2_e^n_s2 + (1-p2_e)^n_s2)         )
+    
+      responses <- expand.grid(rep(list(c(0, 1)), n_s2))
+      
+      colnames(responses) <- paste0("Subject", 1:n_s2)
+  
+      # Calculate the probability for each row
+      responses$Probability <- apply(responses, 1, function(row) {
+        prod(ifelse(row == 1, p2_e, 1 - p2_e))
+      })
+      
+      # Add a column for the count of 1s in each row
+      responses$Num_Ones <- rowSums(responses == 1)
+      
+      # Summarize probabilities by the number of 1s
+      grouped <- aggregate(Probability ~ Num_Ones, data = responses, sum)
+      #sum(sum(grouped$Probability[2:5])*0.5,p2_e_yes_star,p2_e_no_star )
+      grouped$Probability[1] = p2_e_no_star
+      grouped$Probability[n_s2+1] = p2_e_yes_star
+      grouped$Probability[2:n_s2] = (1-rho2)*grouped$Probability[2:n_s2]
+      #sum(grouped$Probability)
+      
+      Y2=c()
+      Y2_mat = rbind(c(0,0,0,0,0),
+                    c(1,0,0,0,0),
+                    c(1,1,0,0,0),
+                    c(1,1,1,0,0),
+                    c(1,1,1,1,0),
+                    c(1,1,1,1,1))
+      
+      for (c in 1:n2_cluster_t) {
+        sampled = sample(1:(n_s2+1), size=1,replace = TRUE, prob = grouped$Probability)
+        Y2=c(Y2,Y2_mat[sampled,])
+      }
+    
+     
+    }
+    
+    
+
+    if(direction==1 & var_type==2){
+      
+      
+      rho1_hat =rho1
+      rho2_hat =rho2
+      
+      sp1=sigma1
+      sp2=sigma2
+      
+      
+      w1=(sqrt(n1*n_s1)/sp1)*(1/sqrt((1+lambda)*(nu1^2) + (1+1/lambda)*(nu1^2)*(a1^2)))
+      w2=((1+pi_IF)*sqrt(n2*n_s2)/sp2)*(1/sqrt((1+lambda)*(nu2^2) + (1+1/lambda)*(nu2^2)*(a2^2)))
+      
+      
+      t1= (mean(Y1)-mean(X1))/(sp1*sqrt((1+lambda)*(nu1^2)/(n1*n_s1) + (1+1/lambda)*(nu1^2)*(a1^2)/(n1*n_s1)))
+      t2= (mean(Y2)-mean(X2))/(sp2*sqrt((1+lambda)*(nu2^2)/(n2*n_s2) + (1+1/lambda)*(nu2^2)*(a2^2)/(n2*n_s2))) 
+       
+      
+     
+      z_stat = (w1*t1 + w2*t2)/sqrt(w1^2 + w2^2)
+      
+      sig_vec[ii]= ifelse(z_stat>=z_a, 1, 0)
+      z_stat_vec[ii] = z_stat
+      t1_vec[ii] = t1
+      t2_vec[ii] = t2
+      
+    }
+    
+    #if(direction==2 & var_type==2){
+      
+      
+    #}
+    
+      
+    
+  }
+  
+  sig_val=mean(sig_vec[!is.na(sig_vec)])
+  
+  final_result=list(n1=n1,
+                    n2=n2,
+                    n=n_val,
+                    sig_val=sig_val,
+                    sig_vec=sig_vec,
+                    z_stat_vec=z_stat_vec,
+                    t1_vec=t1_vec,
+                    t2_vec=t2_vec
+  )
+  
+  return(final_result)
+  
+  
+}
+
+
+
+```
+
+
+
+
+
+#case 1
+```{r}
+
+T1=Sys.time()
+
+res1=hybrid_one_stage_hybrid(hypo="null", 
+                            p1=0.2,p1_e=0.4, p2=0.2, p2_e=0.35, 
+                            r=3, lambda=1, 
+                            rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                            alpha=0.025, beta=0.2, direction=1, var_type=2,  
+                            nsim=10000, seed_number=1234567)
+
+
+res1$sig_val
+mean(res1$z_stat_vec)
+sd(res1$z_stat_vec)
+mean(res1$t1_vec)
+sd(res1$t1_vec)
+mean(res1$t2_vec)
+sd(res1$t2_vec)
+
+
+T2=Sys.time()
+T2-T1
+
+res2=hybrid_one_stage_hybrid(hypo="alter", 
+                            p1=0.2,p1_e=0.4, p2=0.2, p2_e=0.35, 
+                            r=3, lambda=1, 
+                            rho1=0.5, rho2=0.5, n_s1=5, n_s2=5,
+                            alpha=0.025, beta=0.2, direction=1, var_type=2,  
+                            nsim=10000, seed_number=1234567)
+
+res2$sig_val
+mean(res2$z_stat_vec)
+sd(res2$z_stat_vec)
+mean(res2$t1_vec)
+sd(res2$t1_vec)
+mean(res2$t2_vec)
+sd(res2$t2_vec)
+
+
+```
+
+
+
+
+
+
