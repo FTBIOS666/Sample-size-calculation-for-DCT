@@ -1,0 +1,10 @@
+The folder contains three main items:
+
+1. functions.R: contains all the R function used for sample size calculation for decentralized clinical trials.
+
+2. Figures: contain all the R codes for generating the figures in the paper for the case study and simulation study.
+            it contains two sub folders for cross-sectional (independet data) and longitudinal (correlated data) study.
+
+3. Test_distribution: contains all the R codes used for testing the distribution of the constructed weighetd z test staistics 
+                      under the null and alternatives for cross-sectional (independet data) and longitudinal (correlated data) study,
+                      and for normal or continuous endpoints.
